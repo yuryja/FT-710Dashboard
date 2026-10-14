@@ -396,14 +396,14 @@ void Worker::connect(const Connection& connection) {
     }
     state_.canPower = rig_->caps->set_powerstat != nullptr;
     state_.canPtt = rig_->caps->set_ptt != nullptr;
-    state_.model = state_.demo ? "Hamlib Dummy / demo" : "Yaesu FT-710";
+    state_.model = state_.demo ? "Yaesu FT-710 AESS (Simulated)" : "Yaesu FT-710";
     if (state_.demo) {
-        rig_set_freq(rig_, RIG_VFO_A, 14200000);
-        rig_set_freq(rig_, RIG_VFO_B, 7074000);
-        rig_set_mode(rig_, RIG_VFO_A, RIG_MODE_USB, 2400);
-        rig_set_mode(rig_, RIG_VFO_B, RIG_MODE_PKTUSB, 3000);
+        rig_set_freq(rig_, RIG_VFO_A, 14074000); // 20m FT8
+        rig_set_freq(rig_, RIG_VFO_B, 7074000);  // 40m FT8
+        rig_set_mode(rig_, RIG_VFO_A, RIG_MODE_PKTUSB, 3000);
+        rig_set_mode(rig_, RIG_VFO_B, RIG_MODE_LSB, 2400);
         value_t value{};
-        value.f = 0.5f;
+        value.f = 1.0f; // 100 W
         rig_set_level(rig_, RIG_VFO_CURR, RIG_LEVEL_RFPOWER, value);
         value.f = 0.35f;
         rig_set_level(rig_, RIG_VFO_CURR, RIG_LEVEL_AF, value);
@@ -527,6 +527,37 @@ void Worker::discover() {
         return s.kind == Kind::Special && !s.readable && !s.writable;
     }), state_.settings.end());
     rig_token_foreach(rig_, collectConfig, &state_.settings);
+    if (state_.demo) {
+        auto ensureLevel = [&](setting_t mask, const std::string& name, const std::string& units, bool txOnly = false) {
+            auto it = std::find_if(state_.settings.begin(), state_.settings.end(), [mask](const Setting& s) {
+                return s.kind == Kind::Level && s.mask == mask;
+            });
+            if (it == state_.settings.end()) {
+                Setting s;
+                s.id = "level." + name;
+                s.name = nameFor(name);
+                s.group = "Levels";
+                s.kind = Kind::Level;
+                s.mask = mask;
+                s.type = ValueType::Real;
+                s.readable = true;
+                s.writable = false;
+                s.valid = true;
+                s.units = units;
+                s.txOnly = txOnly;
+                s.status = "Live";
+                state_.settings.push_back(s);
+            }
+        };
+        ensureLevel(RIG_LEVEL_STRENGTH, "STRENGTH", "dB rel. S9");
+        ensureLevel(RIG_LEVEL_RFPOWER_METER_WATTS, "RFPOWER_METER_WATTS", "W", true);
+        ensureLevel(RIG_LEVEL_RFPOWER_METER, "RFPOWER_METER", "");
+        ensureLevel(RIG_LEVEL_SWR, "SWR", "", true);
+        ensureLevel(RIG_LEVEL_ALC, "ALC", "", true);
+        ensureLevel(RIG_LEVEL_COMP_METER, "COMP_METER", "dB", true);
+        ensureLevel(RIG_LEVEL_VD_METER, "VD_METER", "V");
+        ensureLevel(RIG_LEVEL_ID_METER, "ID_METER", "A");
+    }
     for (auto& s : state_.settings) if (s.kind == Kind::Configuration) read(s);
     log_("Discovered " + std::to_string(state_.settings.size()) + " Hamlib settings. Slow settings refresh in rotation.");
 }
@@ -699,6 +730,35 @@ void Worker::pollMeters(bool publishUpdate) {
         }
         if (commandPending()) break;
     }
+    if (state_.demo) {
+        static std::uint64_t simTick = 0;
+        simTick++;
+        for (auto& s : state_.settings) {
+            if (s.kind == Kind::Level) {
+                if (s.mask == RIG_LEVEL_STRENGTH) {
+                    s.valid = !state_.transmitting;
+                    s.status = state_.transmitting ? "RX only" : "Live";
+                    s.updated = Clock::now();
+                    double db = -14.0 + 8.0 * std::sin(simTick * 0.18) + 4.0 * std::cos(simTick * 0.42);
+                    s.value = formatNumber(db);
+                } else if (s.mask == RIG_LEVEL_VD_METER) {
+                    s.valid = true; s.status = "Live"; s.updated = Clock::now(); s.value = "13.8";
+                } else if (s.mask == RIG_LEVEL_ID_METER) {
+                    s.valid = true; s.status = "Live"; s.updated = Clock::now(); s.value = state_.transmitting ? "18.5" : "1.8";
+                } else if (s.mask == RIG_LEVEL_SWR) {
+                    s.valid = true; s.status = "Live"; s.updated = Clock::now(); s.value = state_.transmitting ? "1.15" : "1.00";
+                } else if (s.mask == RIG_LEVEL_ALC) {
+                    s.valid = true; s.status = "Live"; s.updated = Clock::now(); s.value = state_.transmitting ? "0.38" : "0.00";
+                } else if (s.mask == RIG_LEVEL_COMP_METER) {
+                    s.valid = true; s.status = "Live"; s.updated = Clock::now(); s.value = state_.transmitting ? "6.0" : "0.0";
+                } else if (s.mask == RIG_LEVEL_RFPOWER_METER_WATTS) {
+                    s.valid = true; s.status = "Live"; s.updated = Clock::now(); s.value = state_.transmitting ? "100.0" : "0.0";
+                } else if (s.mask == RIG_LEVEL_RFPOWER_METER) {
+                    s.valid = true; s.status = "Live"; s.updated = Clock::now(); s.value = state_.transmitting ? "1.00" : "0.00";
+                }
+            }
+        }
+    }
     if (publishUpdate) publish();
 }
 void Worker::pollControls() {
@@ -780,7 +840,7 @@ void Worker::poll() {
     state_.online = true;
     state_.standby = false; state_.poweredOff = false;
     state_.powerKnown = true;
-    state_.connectionStatus = state_.demo ? "DEMO / Hamlib Dummy" : "Connected / live CAT";
+    state_.connectionStatus = state_.demo ? "Simulated / Yaesu FT-710" : "Connected / live CAT";
     state_.lastContact = Clock::now();
     state_.a.frequency = frequency; state_.a.frequencyValid = true;
     if (pending()) { publish(); return; }

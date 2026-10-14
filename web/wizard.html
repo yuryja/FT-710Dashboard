@@ -326,12 +326,16 @@
         </li>
       </ul>
 
-      <div style="text-align: center; margin: 2rem 0;">
+      <div style="text-align: center; margin: 2rem 0; display: flex; flex-direction: column; align-items: center; gap: 0.85rem;">
         <a id="btnOpenDashboard" href="https://{{HOST}}/" class="btn btn-orange" style="font-size: 1.15rem; padding: 1rem 2.4rem;">
           <svg class="icon" viewBox="0 0 24 24" style="stroke:#fff"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
           <span data-i18n="step5_launch_btn">Abrir Dashboard Principal (HTTPS)</span>
         </a>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.75rem;">URL: https://{{HOST}}/</p>
+        <a id="btnSimDashboard" href="/dashboard#code={{ACCESS_CODE}}" class="btn btn-primary" style="font-size: 0.95rem; padding: 0.75rem 1.8rem;">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span data-i18n="step5_sim_btn">Explorar Interfaz Visual Simulada (Acceso Directo Test)</span>
+        </a>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">HTTPS: https://{{HOST}}/ &middot; Modo Test: http://{{HOST}}/dashboard</p>
       </div>
 
       <div class="nav-bar">
@@ -414,6 +418,7 @@
         step5_chk3_title: "Controlador FT-710",
         step5_chk3_desc: "Driver Hamlib cargado y temporizador de seguridad de PTT habilitado",
         step5_launch_btn: "Abrir Dashboard Principal (HTTPS)",
+        step5_sim_btn: "Explorar Interfaz Visual Simulada (Acceso Directo Test)",
         btn_next: "Continuar",
         btn_prev: "Atrás",
         btn_copy: "Copiar"
@@ -472,6 +477,7 @@
         step5_chk3_title: "FT-710 Controller",
         step5_chk3_desc: "Hamlib driver loaded and PTT watchdog enabled",
         step5_launch_btn: "Open Main Dashboard (HTTPS)",
+        step5_sim_btn: "Explore Simulated Visual Interface (Direct Test Access)",
         btn_next: "Next",
         btn_prev: "Back",
         btn_copy: "Copy"
@@ -530,6 +536,7 @@
         step5_chk3_title: "Contrôleur FT-710",
         step5_chk3_desc: "Driver Hamlib actif et temporisateur PTT opérationnel",
         step5_launch_btn: "Ouvrir le Tableau de Bord (HTTPS)",
+        step5_sim_btn: "Explorer l'Interface Visuelle Simulée (Accès Direct Test)",
         btn_next: "Suivant",
         btn_prev: "Précédent",
         btn_copy: "Copier"
@@ -588,6 +595,7 @@
         step5_chk3_title: "Controlador FT-710",
         step5_chk3_desc: "Hamlib pronto e proteção contra PTT travado habilitada",
         step5_launch_btn: "Abrir Painel Principal (HTTPS)",
+        step5_sim_btn: "Explorar Interface Visual Simulada (Acesso Direto Teste)",
         btn_next: "Avançar",
         btn_prev: "Voltar",
         btn_copy: "Copiar"
@@ -646,6 +654,7 @@
         step5_chk3_title: "Controller FT-710",
         step5_chk3_desc: "Driver Hamlib pronto e protezione da PTT bloccato abilitata",
         step5_launch_btn: "Apri Dashboard Principale (HTTPS)",
+        step5_sim_btn: "Esplora l'Interfaccia Visuale Simulata (Accesso Diretto Test)",
         btn_next: "Avanti",
         btn_prev: "Indietro",
         btn_copy: "Copia"

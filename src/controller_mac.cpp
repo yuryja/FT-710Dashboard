@@ -9,6 +9,23 @@
 
 namespace app {
 namespace {
+std::string toUtf8(const std::wstring& ws) {
+    std::string s;
+    s.reserve(ws.size());
+    for (wchar_t wc : ws) {
+        if (wc < 128 && wc >= 0) s.push_back(static_cast<char>(wc));
+        else if (wc < 0x800) {
+            s.push_back(static_cast<char>(0xc0 | (wc >> 6)));
+            s.push_back(static_cast<char>(0x80 | (wc & 0x3f)));
+        } else {
+            s.push_back(static_cast<char>(0xe0 | (wc >> 12)));
+            s.push_back(static_cast<char>(0x80 | ((wc >> 6) & 0x3f)));
+            s.push_back(static_cast<char>(0x80 | (wc & 0x3f)));
+        }
+    }
+    return s;
+}
+
 std::string boolean(bool v) { return v ? "true" : "false"; }
 
 std::string array(const std::vector<std::string>& values) {
@@ -46,17 +63,18 @@ void ControllerMac::log(const std::string& message) {
 
 void ControllerMac::initialize(bool demo, const std::string& serialPort, int baud, const std::string& passcode) {
     running_ = true;
+    demo_ = demo;
 
     if (demo) {
         connectionKind_ = 2; // Dummy demo
         endpoint_ = "Dummy";
+        webAccessCode_ = passcode.empty() ? "demo" : passcode;
     } else {
         connectionKind_ = 0; // USB CAT
         endpoint_ = serialPort.empty() ? "/dev/cu.SLAB_USBtoUART" : serialPort;
+        webAccessCode_ = passcode.empty() ? web::randomToken().substr(0, 16) : passcode;
     }
     baud_ = baud;
-
-    webAccessCode_ = passcode.empty() ? web::randomToken().substr(0, 16) : passcode;
 
     worker_ = std::make_unique<radio::Worker>(
         [this](const radio::Snapshot& s) { onRadioUpdate(s); },
@@ -284,6 +302,23 @@ void ControllerMac::publishWeb(bool urgent) {
     if (webServer_) {
         webServer_->publish(buildStateJson(), urgent);
 
+        if (demo_) {
+            auto& analyzer = receiveAudio_.spectrum();
+            if (!demoSample_) {
+                analyzer.enable(true);
+                analyzer.configure(48000);
+            }
+            for (unsigned i = 0; i < 2400; ++i, ++demoSample_) {
+                double t = demoSample_ / 48000.0;
+                demoNoise_ = demoNoise_ * 1664525u + 1013904223u;
+                float noise = (static_cast<float>(demoNoise_ >> 8) / 16777216.0f - 0.5f) * 0.003f;
+                float tone = static_cast<float>(0.025 * std::sin(6.283185307179586 * 700 * t) +
+                    0.012 * std::sin(6.283185307179586 * (1600 * t + 70 * std::sin(t))) +
+                    0.006 * std::sin(6.283185307179586 * 2400 * t));
+                analyzer.push(tone + noise);
+            }
+        }
+
         audio::SpectrumFrame frame;
         if (receiveAudio_.spectrum().poll(frame)) {
             webServer_->spectrum(frame);
@@ -386,8 +421,8 @@ std::string ControllerMac::buildStateJson() {
     for (unsigned i = 0; i < devList.size(); ++i) {
         const auto& d = devList[i];
         if (i) out << ',';
-        std::string idStr(d.id.begin(), d.id.end());
-        std::string nameStr(d.name.begin(), d.name.end());
+        std::string idStr = toUtf8(d.id);
+        std::string nameStr = toUtf8(d.name);
         out << "{\"id\":" << web::json(idStr)
             << ",\"name\":" << web::json(nameStr)
             << ",\"input\":" << boolean(d.input)
@@ -419,7 +454,7 @@ std::string ControllerMac::buildStateJson() {
         }
     }
     out << "],\"rf\":{\"running\":" << boolean(rfCapture_.running())
-        << ",\"status\":" << web::json(std::string(rfCapture_.status().begin(), rfCapture_.status().end()))
+        << ",\"status\":" << web::json(toUtf8(rfCapture_.status()))
         << ",\"port\":" << web::json(rfCat2Port_)
         << ",\"baud\":" << rfCat2Baud_
         << ",\"span\":" << rfSpan_

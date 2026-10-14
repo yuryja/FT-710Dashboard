@@ -49,7 +49,7 @@ bool same(const std::string& a, const std::string& b) {
 std::string response(unsigned status, const std::string& type, const std::string& body, const std::string& extra = "", const std::string& host = "") {
     return "HTTP/1.1 " + std::to_string(status) + (status == 200 ? " OK" : status == 401 ? " Unauthorized" : status == 403 ? " Forbidden" : status == 429 ? " Too Many Requests" : " Error") +
         "\r\nContent-Type: " + type + "\r\nContent-Length: " + std::to_string(body.size()) + "\r\nConnection: close\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\n" +
-        "Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self'" + (host.empty() ? "" : " wss://" + host) + "; media-src 'self' blob:; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\r\nPermissions-Policy: microphone=(self), camera=()\r\n" + extra + "\r\n" + body;
+        "Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self'" + (host.empty() ? "" : " wss://" + host + " ws://" + host) + "; media-src 'self' blob:; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\r\nPermissions-Policy: microphone=(self), camera=()\r\n" + extra + "\r\n" + body;
 }
 std::string setupPage(const std::string& host, const std::string& fingerprint, const std::string& accessCode) {
     try {
@@ -267,7 +267,7 @@ void Server::serve(Client& client) {
             std::ifstream f("NOTICE");
             std::string notc = f ? std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>()) : "See NOTICE in repository.";
             stream.send(response(200, "text/plain; charset=utf-8", notc));
-        } else if (!stream.secure()) {
+        } else if (!stream.secure() && !path.starts_with("/api/") && path != "/ws" && path != "/dashboard" && path != "/live" && path != "/app.js" && path != "/audio-worklet.js" && path != "/audio-playback.js" && path != "/control-core.js") {
             if (isGetOrHead && (path == "/" || path == "/index.html" || path == "/setup" || path == "/wizard" || path == "/wizard.html")) stream.send(response(200,"text/html; charset=utf-8",setupPage(headers["host"],credentials_->fingerprint,accessCode_)));
             else if (isGetOrHead && path == "/app.css") stream.send(response(200,"text/css; charset=utf-8",resource(202)));
             else if (isGetOrHead && path == "/wizard.css") stream.send(response(200,"text/css; charset=utf-8",resource(211)));
@@ -276,7 +276,9 @@ void Server::serve(Client& client) {
         std::string body = input.substr(end + 4); unsigned length = 0;
         if (headers.contains("content-length")) { std::size_t consumed = 0; auto number = std::stoul(headers["content-length"], &consumed); if (consumed != headers["content-length"].size() || number > 4096) throw std::runtime_error("Invalid body size"); length = static_cast<unsigned>(number); }
         while (body.size() < length) if (stream.read(body, 500) < 0 || GetTickCount64() > deadline || !running_) throw std::runtime_error("Incomplete HTTP body");
-        bool origin = lower(headers["origin"]) == "https://" + lower(headers["host"]);
+        bool origin = lower(headers["origin"]) == "https://" + lower(headers["host"]) ||
+                      lower(headers["origin"]) == "http://" + lower(headers["host"]) ||
+                      headers["origin"].empty();
         if (method == "POST" && path == "/api/login" && origin && headers["content-type"].starts_with("application/x-www-form-urlencoded")) {
             bool limited = false; std::string token;
             const auto code = form(body.substr(0,length))["code"];
@@ -291,11 +293,13 @@ void Server::serve(Client& client) {
             if (limited) stream.send(response(429, "application/json", "{\"error\":\"Wait a second before trying again\"}"));
             else if (token.empty()) stream.send(response(401, "application/json", "{\"error\":\"Incorrect station access code\"}"));
             else {
-                stream.send(response(200, "application/json", "{\"ok\":true}", "Set-Cookie: ft710_tls_session=" + token + "; Path=/; Max-Age=28800; Secure; HttpOnly; SameSite=Strict\r\n"));
+                std::string secCookie = stream.secure() ? " Secure;" : "";
+                stream.send(response(200, "application/json", "{\"ok\":true}", "Set-Cookie: ft710_tls_session=" + token + "; Path=/; Max-Age=28800;" + secCookie + " HttpOnly; SameSite=Lax\r\n"));
             }
         } else if (method == "POST" && path == "/api/logout" && origin) {
             { std::lock_guard lock(loginMutex_); tokens_.erase(cookieToken(headers["cookie"])); }
-            stream.send(response(200, "application/json", "{\"ok\":true}", "Set-Cookie: ft710_tls_session=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Strict\r\n"));
+            std::string secCookie = stream.secure() ? " Secure;" : "";
+            stream.send(response(200, "application/json", "{\"ok\":true}", "Set-Cookie: ft710_tls_session=; Path=/; Max-Age=0;" + secCookie + " HttpOnly; SameSite=Lax\r\n"));
         } else if (method == "GET" && path == "/ws" && origin && authenticated(headers["cookie"]) && lower(headers["upgrade"]) == "websocket" && lower(headers["connection"]).find("upgrade") != std::string::npos && headers["sec-websocket-version"] == "13") {
             auto key = headers["sec-websocket-key"];
             if (key.size() != 24 || clients_ >= 8) throw std::runtime_error("Invalid WebSocket handshake");
@@ -303,7 +307,7 @@ void Server::serve(Client& client) {
         } else if (method == "GET" && path == "/api/state") {
             if (!authenticated(headers["cookie"])) stream.send(response(401,"application/json","{\"error\":\"Sign in first\"}"));
             else { std::string state; { std::lock_guard lock(stateMutex_); state = state_; } stream.send(response(200,"application/json",state)); }
-        } else if (isGetOrHead && (path == "/" || path == "/index.html")) stream.send(response(200,"text/html; charset=utf-8",resource(201),"",headers["host"]));
+        } else if (isGetOrHead && (path == "/" || path == "/index.html" || path == "/dashboard" || path == "/live")) stream.send(response(200,"text/html; charset=utf-8",resource(201),"",headers["host"]));
         else if (isGetOrHead && path == "/app.css") stream.send(response(200,"text/css; charset=utf-8",resource(202)));
         else if (isGetOrHead && path == "/wizard.css") stream.send(response(200,"text/css; charset=utf-8",resource(211)));
         else if (isGetOrHead && path == "/app.js") stream.send(response(200,"application/javascript; charset=utf-8",resource(203)));

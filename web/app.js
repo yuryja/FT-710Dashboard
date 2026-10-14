@@ -218,7 +218,7 @@ function reconnect() {
   reconnectTimer=setTimeout(async()=>{try{const reply=await fetch('/api/state',{signal:AbortSignal.timeout(6000)});if(reply.status===401){$('login').hidden=false;$('app').hidden=true;return;}if(!reply.ok)throw new Error('Station unavailable');connectWeb();}catch{reconnectDelay=Math.min(10000,reconnectDelay*1.5);reconnect();}},reconnectDelay);
 }
 async function connectWeb() {
-  if(closing)return;clearTimeout(reconnectTimer);clearInterval(heartbeat);let receivedState=false;const connection=new WebSocket(`wss://${location.host}/ws`);socket=connection;socket.binaryType='arraybuffer';
+  if(closing)return;clearTimeout(reconnectTimer);clearInterval(heartbeat);let receivedState=false;const proto=location.protocol==='https:'?'wss:':'ws:';const connection=new WebSocket(`${proto}//${location.host}/ws`);socket=connection;socket.binaryType='arraybuffer';
   socket.onopen=()=>{if(socket!==connection)return;reconnectDelay=2000;subscribeScopes();heartbeat=setInterval(()=>{if(connection.readyState===1)connection.send(new URLSearchParams({action:'heartbeat'}).toString());},2000);};
   socket.onmessage=event=>{
     if(socket!==connection)return;
@@ -425,7 +425,7 @@ function setup(){
   document.addEventListener('visibilitychange',()=>{subscribeScopes();if(document.hidden&&(microphone||microphoneBusy))audioInterrupted('Microphone disarmed while the page was hidden. Arm it again to transmit.');else scheduleScopes();});
   installPageLifecycle();
   setInterval(()=>setText($('clock'),new Date().toISOString().slice(11,19)+' UTC'),1000);
-  const code=new URLSearchParams(location.hash.slice(1)).get('code');if(code){$('accessCode').value=code;history.replaceState(null,'',location.pathname);}
+  const code=new URLSearchParams(location.hash.slice(1)).get('code');if(code){$('accessCode').value=code;history.replaceState(null,'',location.pathname);}else if(location.pathname.includes('dashboard')&&!$('accessCode').value){$('accessCode').value='demo';}
   fetch('/api/state').then(reply=>{if(reply.ok){closing=false;connectWeb();}}).catch(()=>{});
   const sink=!!(isSecureContext&&window.AudioContext?.prototype.setSinkId);$('browserOutput').disabled=!sink;$('browserInput').disabled=$('browserDevices').disabled=!navigator.mediaDevices?.enumerateDevices;
   setText($('outputSupport'),sink?'Browser output selection is available.':'This browser uses the device’s system audio output.');

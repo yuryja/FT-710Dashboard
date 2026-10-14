@@ -132,8 +132,7 @@ void Credentials::create(const std::wstring& folderW) {
         const char* home = std::getenv("HOME");
         baseDir = home ? (std::filesystem::path(home) / ".config" / "ft710") : std::filesystem::current_path();
     } else {
-        std::string u8(folderW.begin(), folderW.end());
-        baseDir = u8;
+        baseDir = std::filesystem::path(folderW);
     }
     std::filesystem::create_directories(baseDir);
 

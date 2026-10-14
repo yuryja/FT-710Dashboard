@@ -71,6 +71,11 @@ private:
     std::vector<std::string> activity_;
     std::mutex activityMutex_;
 
+    // Simulation members
+    bool demo_ = false;
+    std::uint64_t demoSample_ = 0;
+    std::uint32_t demoNoise_ = 0x12345678;
+
     void log(const std::string& message);
     void connectRadio();
     void disconnectRadio();

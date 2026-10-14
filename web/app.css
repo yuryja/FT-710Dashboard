@@ -181,3 +181,52 @@
 .log-btn{flex:1 1 auto;min-height:28px;padding:4px 8px;font-size:11px;font-weight:600;border-radius:6px;background:rgba(255,255,255,0.04);border:1px solid var(--line);color:var(--muted);cursor:pointer;transition:all .15s ease;text-align:center;white-space:nowrap}
 .log-btn:hover{border-color:var(--mint);color:var(--text);background:rgba(80,211,194,0.08)}
 .log-btn.active{background:rgba(80,211,194,0.16);border-color:var(--mint);color:var(--mint);box-shadow:0 0 10px rgba(80,211,194,0.25)}
+
+/* VFO Interactive Elements */
+.vfo-freq-clickable{cursor:pointer;border-radius:8px;padding:2px 8px;transition:all .2s ease;display:inline-block}
+.vfo-freq-clickable:hover{color:#4df3c5;background:rgba(80,211,194,0.1);box-shadow:0 0 14px rgba(80,211,194,0.25);transform:scale(1.02)}
+.vfo-mode-clickable{cursor:pointer;border-radius:6px;padding:2px 8px;border:1px solid transparent;transition:all .2s ease;display:inline-block}
+.vfo-mode-clickable:hover{border-color:var(--mint);background:rgba(80,211,194,0.14);box-shadow:0 0 10px rgba(80,211,194,0.3);transform:scale(1.04)}
+
+.vfo-step-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:rgba(20,55,50,0.5);border:1px solid rgba(80,211,194,0.4);color:var(--mint);font-size:11px;font-family:Consolas,ui-monospace,monospace;font-weight:600;letter-spacing:.3px;box-shadow:0 0 8px rgba(80,211,194,0.15)}
+
+/* Frequency & Step Modal */
+#freqDialog.freq-modal{width:min(540px,94vw);border-radius:14px;background:#0c0e14;border:1px solid rgba(255,255,255,0.12);box-shadow:0 24px 64px rgba(0,0,0,0.9);padding:22px 24px}
+#freqDialog::backdrop{background:rgba(0,0,0,0.78);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.freq-input-card{background:#11141c;border:1px solid #1c222e;border-radius:10px;padding:16px;margin-top:14px;display:flex;flex-direction:column;gap:12px}
+.freq-input-wrapper input{font:clamp(24px,4vw,34px)/1.2 Consolas,ui-monospace,monospace;color:var(--mint);text-align:center;letter-spacing:1px;background:#080a0f;border:1px solid rgba(80,211,194,0.3);border-radius:8px;padding:10px 12px;min-height:54px}
+.freq-input-wrapper input:focus{border-color:var(--mint);box-shadow:0 0 12px rgba(80,211,194,0.3)}
+.freq-nudge-row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.freq-nudge-btn{flex:1;min-height:40px;font-size:13px;font-weight:600}
+.freq-current-step-display{font-size:13px;color:var(--mint);font-family:Consolas,ui-monospace,monospace;font-weight:600;padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.04);border:1px solid var(--line);white-space:nowrap}
+.freq-steps-section{margin-top:18px}
+.freq-steps-title{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.5px;margin-bottom:8px}
+.freq-steps-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+@media(max-width:500px){.freq-steps-grid{grid-template-columns:repeat(3,1fr)}}
+.step-chip{min-height:36px;padding:4px;font-size:12px;font-family:Consolas,ui-monospace,monospace;font-weight:600;border-radius:6px;background:rgba(255,255,255,0.04);border:1px solid var(--line);color:var(--muted);cursor:pointer;transition:all .15s ease;text-align:center}
+.step-chip:hover{border-color:var(--mint);color:var(--text);background:rgba(80,211,194,0.08)}
+.step-chip.selected{background:rgba(80,211,194,0.18);border-color:var(--mint);color:var(--mint);box-shadow:0 0 10px rgba(80,211,194,0.25)}
+.freq-modal-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:20px}
+.freq-modal-actions button{min-width:110px;min-height:40px;font-size:13px}
+
+/* Mode & Filter Modal */
+#modeDialog.mode-modal{width:min(600px,94vw);border-radius:14px;background:#0c0e14;border:1px solid rgba(255,255,255,0.12);box-shadow:0 24px 64px rgba(0,0,0,0.9);padding:22px 24px;scrollbar-width:none}
+#modeDialog::-webkit-scrollbar{display:none}
+#modeDialog::backdrop{background:rgba(0,0,0,0.78);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.mode-buttons-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}
+@media(max-width:550px){.mode-buttons-grid{grid-template-columns:repeat(3,1fr)}}
+.mode-chip{min-height:42px;font-size:13px;font-weight:600;letter-spacing:.5px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid var(--line);color:var(--text);cursor:pointer;transition:all .15s ease}
+.mode-chip:hover{border-color:var(--mint);background:rgba(80,211,194,0.08);transform:translateY(-1px)}
+.mode-chip.selected{background:rgba(80,211,194,0.18);border-color:var(--mint);color:var(--mint);box-shadow:0 0 12px rgba(80,211,194,0.3)}
+.filter-section{border-top:1px solid var(--line);padding-top:16px;margin-top:10px}
+.filter-section-heading{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.filter-section-heading h3{font-size:15px;color:var(--text)}
+.filter-readout{font-size:13px;color:var(--mint);font-family:Consolas,ui-monospace,monospace;font-weight:600}
+.filter-presets-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.filter-chip{flex:1 1 auto;min-height:34px;padding:4px 10px;font-size:12px;font-weight:600;border-radius:6px;background:rgba(255,255,255,0.04);border:1px solid var(--line);color:var(--muted);cursor:pointer;transition:all .15s ease}
+.filter-chip:hover{border-color:var(--mint);color:var(--text);background:rgba(80,211,194,0.08)}
+.filter-chip.selected{background:rgba(80,211,194,0.18);border-color:var(--mint);color:var(--mint);box-shadow:0 0 8px rgba(80,211,194,0.25)}
+.filter-custom-form{display:flex;align-items:center;gap:10px}
+.filter-custom-form input{width:110px;min-height:36px;padding:4px 8px;font-size:13px;text-align:center;border-radius:6px;background:#080a0f}
+.btn-custom-filter{min-height:36px;padding:4px 12px;font-size:12px}
+

@@ -220,7 +220,9 @@ function render(next) {
   $('endpoint').disabled=state.portOpen||state.busy||connection.kind===2;$('connectRadio').disabled=state.busy;setText($('connectRadio'),state.portOpen?'Disconnect':state.busy?'Opening…':'Connect');
   if(!dirty.has('shareEnabled'))$('shareEnabled').checked=state.sharing.wanted;value('sharePort',state.sharing.port);$('shareEnabled').disabled=connection.kind===1;$('saveSharing').disabled=connection.kind===1||state.busy;
   setText($('sharingStatus'),state.sharing.error||(state.sharing.running?`127.0.0.1:${state.sharing.port} · ${state.sharing.clients} Hamlib clients`:'CAT sharing inactive'));
-  ['A','B'].forEach((name,index)=>{const vfo=state.vfos[index];setText($('freq'+name),vfo.frequencyValid?frequency(vfo.frequency):'--.---.---');setText($('mode'+name),vfo.modeValid?vfo.mode:'--');setText($('width'+name),vfo.modeValid?vfo.width+' Hz filter':'-- Hz filter');setText($('band'+name),vfo.frequencyValid?band(vfo.frequency):'Waiting for radio');$('card'+name).classList.toggle('active',state.online&&state.activeVfo===name);});
+  const curStep = Number(localStorage.getItem('step') || $('step')?.value || '100');
+  const stepLabel = (curStep >= 1e6 ? (curStep/1e6)+' MHz' : curStep >= 1e3 ? (curStep/1e3)+' kHz' : curStep+' Hz') + ' step';
+  ['A','B'].forEach((name,index)=>{const vfo=state.vfos[index];setText($('freq'+name),vfo.frequencyValid?frequency(vfo.frequency):'--.---.---');setText($('mode'+name),vfo.modeValid?vfo.mode:'--');setText($('width'+name),vfo.modeValid?vfo.width+' Hz filter':'-- Hz filter');setText($('band'+name),vfo.frequencyValid?band(vfo.frequency):'Waiting for radio');const isActive=state.online&&state.activeVfo===name;$('card'+name).classList.toggle('active',isActive);if($('step'+name)){setText($('step'+name),stepLabel);$('step'+name).style.display=isActive?'inline-flex':'none';}});
   editAcknowledged('controlVfo',state.vfoRevision);value('controlVfo',state.activeVfo);const index=$('controlVfo').value==='B'?1:0,vfo=state.vfos[index];
   editAcknowledged('frequency',vfo.frequencyRevision);editAcknowledged('mode',vfo.modeRevision);editAcknowledged('width',vfo.modeRevision);
   value('frequency',vfo.frequencyValid?(vfo.frequency/1e6).toFixed(6):'');optionList($('mode'),state.modes.map(mode=>[mode,mode]),vfo.modeValid?vfo.mode:'');value('width',vfo.modeValid?vfo.width:'');
@@ -485,6 +487,116 @@ function setup(){
   $('dial').addEventListener('pointerdown',event=>{if(!state?.online)return;drag=event.pointerId;lastX=event.clientX;motion=0;$('dial').setPointerCapture(drag);});$('dial').addEventListener('pointermove',event=>{if(drag!==event.pointerId)return;motion+=event.clientX-lastX;lastX=event.clientX;const count=Math.trunc(motion/12);if(count){motion-=count*12;queue(count);}});for(const name of ['pointerup','pointercancel','lostpointercapture'])$('dial').addEventListener(name,()=>{drag=undefined;tuningQueue.flush().catch(error=>notify(error.message));});
   $('dial').addEventListener('keydown',protect(event=>{if(['ArrowLeft','ArrowDown','ArrowRight','ArrowUp','PageUp','PageDown'].includes(event.key)){event.preventDefault();return tune(event.key==='PageUp'?10:event.key==='PageDown'?-10:event.key==='ArrowLeft'||event.key==='ArrowDown'?-1:1);}}));
   for(const id of ['dial','freqA','freqB'])$(id).addEventListener('wheel',event=>{event.preventDefault();queue(event.deltaY<0?1:-1,id==='dial'?$('controlVfo').value:id==='freqB'?'B':'A');},{passive:false});
+
+  function formatStepLabel(hz){if(hz>=1e6)return (hz/1e6)+' MHz';if(hz>=1e3)return (hz/1e3)+' kHz';return hz+' Hz';}
+  function updateVfoStepBadges(){const cur=Number(localStorage.getItem('step')||$('step')?.value||'100');const lbl=formatStepLabel(cur)+' step';['A','B'].forEach(name=>{if($('step'+name)){setText($('step'+name),lbl);const isAct=state?.online&&state?.activeVfo===name;$('step'+name).style.display=isAct?'inline-flex':'none';}});}
+
+  let modalTargetVfo='A';
+  let modalSelectedStep=Number(localStorage.getItem('step')||'100');
+
+  function openFreqModal(vfoName){
+    modalTargetVfo=vfoName;
+    setText($('freqModalTitle'),'VFO '+vfoName+' Frequency');
+    const index=vfoName==='B'?1:0;
+    const vfo=state?.vfos?.[index];
+    $('freqManualInput').value=vfo&&vfo.frequencyValid?frequency(vfo.frequency):'14.074.000';
+    modalSelectedStep=Number(localStorage.getItem('step')||$('step')?.value||'100');
+    document.querySelectorAll('#freqStepsGrid .step-chip').forEach(chip=>{
+      chip.classList.toggle('selected',Number(chip.dataset.step)===modalSelectedStep);
+    });
+    setText($('freqStepPreview'),'Step: '+formatStepLabel(modalSelectedStep));
+    $('freqDialog').showModal();
+    setTimeout(()=>$('freqManualInput').select(),50);
+  }
+
+  function openModeModal(vfoName){
+    modalTargetVfo=vfoName;
+    setText($('modeModalTitle'),'VFO '+vfoName+' Operating Mode');
+    const index=vfoName==='B'?1:0;
+    const vfo=state?.vfos?.[index];
+    const curMode=vfo?.modeValid?vfo.mode:'USB';
+    const curWidth=vfo?.modeValid?vfo.width:3000;
+    setText($('currentFilterDisplay'),curWidth?curWidth+' Hz':'Normal (0 Hz)');
+    document.querySelectorAll('#modeButtonsGrid .mode-chip').forEach(chip=>{
+      chip.classList.toggle('selected',chip.dataset.mode===curMode);
+    });
+    document.querySelectorAll('#filterPresetsRow .filter-chip').forEach(chip=>{
+      chip.classList.toggle('selected',Number(chip.dataset.width)===Number(curWidth));
+    });
+    $('modeDialog').showModal();
+  }
+
+  $('freqA').addEventListener('click',()=>openFreqModal('A'));
+  $('freqB').addEventListener('click',()=>openFreqModal('B'));
+  $('modeA').addEventListener('click',()=>openModeModal('A'));
+  $('modeB').addEventListener('click',()=>openModeModal('B'));
+
+  $('closeFreqModal').addEventListener('click',()=>$('freqDialog').close());
+  $('freqModalCancel').addEventListener('click',()=>$('freqDialog').close());
+
+  document.querySelectorAll('#freqStepsGrid .step-chip').forEach(chip=>{
+    chip.addEventListener('click',()=>{
+      modalSelectedStep=Number(chip.dataset.step);
+      document.querySelectorAll('#freqStepsGrid .step-chip').forEach(c=>c.classList.toggle('selected',c===chip));
+      setText($('freqStepPreview'),'Step: '+formatStepLabel(modalSelectedStep));
+    });
+  });
+
+  const nudgeModalFreq=(isUp)=>{
+    try{
+      let currentHz=parseFrequencyInput($('freqManualInput').value);
+      const delta=isUp?modalSelectedStep:-modalSelectedStep;
+      currentHz=Math.max(30000,Math.min(60000000,currentHz+delta));
+      $('freqManualInput').value=frequency(currentHz);
+    }catch(err){notify(err.message);}
+  };
+  $('freqModalUp').addEventListener('click',()=>nudgeModalFreq(true));
+  $('freqModalDown').addEventListener('click',()=>nudgeModalFreq(false));
+
+  $('freqModalForm').addEventListener('submit',protect(async(event)=>{
+    event.preventDefault();
+    const hz=parseFrequencyInput($('freqManualInput').value);
+    await command('frequency',{vfo:modalTargetVfo,hz:String(hz)},'frequency');
+    localStorage.setItem('step',String(modalSelectedStep));
+    if($('step'))$('step').value=String(modalSelectedStep);
+    updateVfoStepBadges();
+    $('freqDialog').close();
+    notify('VFO '+modalTargetVfo+' frequency set to '+frequency(hz),false);
+  }));
+
+  $('closeModeModal').addEventListener('click',()=>$('modeDialog').close());
+
+  document.querySelectorAll('#modeButtonsGrid .mode-chip').forEach(btn=>{
+    btn.addEventListener('click',protect(async()=>{
+      const newMode=btn.dataset.mode;
+      document.querySelectorAll('#modeButtonsGrid .mode-chip').forEach(b=>b.classList.toggle('selected',b.dataset.mode===newMode));
+      await command('mode',{vfo:modalTargetVfo,mode:newMode,width:'0'},'mode');
+      notify('VFO '+modalTargetVfo+' mode: '+newMode,false);
+    }));
+  });
+
+  document.querySelectorAll('#filterPresetsRow .filter-chip').forEach(btn=>{
+    btn.addEventListener('click',protect(async()=>{
+      const newWidth=btn.dataset.width;
+      document.querySelectorAll('#filterPresetsRow .filter-chip').forEach(b=>b.classList.toggle('selected',b.dataset.width===newWidth));
+      setText($('currentFilterDisplay'),Number(newWidth)?newWidth+' Hz':'Normal (0 Hz)');
+      const vfo=state?.vfos?.[modalTargetVfo==='B'?1:0];
+      const curMode=vfo?.modeValid?vfo.mode:'USB';
+      await command('mode',{vfo:modalTargetVfo,mode:curMode,width:String(newWidth)},'width');
+      notify('Filter: '+(Number(newWidth)?newWidth+' Hz':'Normal'),false);
+    }));
+  });
+
+  $('filterModalCustomForm').addEventListener('submit',protect(async(event)=>{
+    event.preventDefault();
+    const val=$('modalFilterCustomInput').value.trim();
+    if(!val)return;
+    const vfo=state?.vfos?.[modalTargetVfo==='B'?1:0];
+    const curMode=vfo?.modeValid?vfo.mode:'USB';
+    await command('mode',{vfo:modalTargetVfo,mode:curMode,width:val},'width');
+    setText($('currentFilterDisplay'),val+' Hz');
+    notify('Filter: '+val+' Hz',false);
+  }));
   $('settingFilter').addEventListener('input',()=>state&&renderSettings());$('settingsVfo').addEventListener('change',protect(async()=>{await command('settingsVfo',{vfo:$('settingsVfo').value});dirty.delete('settingsVfo');}));
   $('closeSetting').addEventListener('click',()=>$('settingDialog').close());$('settingForm').addEventListener('submit',protect(async event=>{event.preventDefault();await command('set',{setting:selectedSetting,value:$('settingChoices').hidden?$('settingValue').value:$('settingChoices').value});$('settingDialog').close();notify('Setting queued. Radio readback appears in the table.',false);}));
   $('clearLog').addEventListener('click',protect(()=>command('clearLog')));$('catPreset').addEventListener('change',()=>$('catCommand').value=$('catPreset').value);$('catForm').addEventListener('submit',protect(event=>{event.preventDefault();return command('rawQuery',{text:$('catCommand').value});}));$('catWrite').addEventListener('click',protect(()=>command('rawWrite',{text:$('catCommand').value})));

@@ -49,7 +49,7 @@ bool same(const std::string& a, const std::string& b) {
 std::string response(unsigned status, const std::string& type, const std::string& body, const std::string& extra = "", const std::string& host = "") {
     return "HTTP/1.1 " + std::to_string(status) + (status == 200 ? " OK" : status == 401 ? " Unauthorized" : status == 403 ? " Forbidden" : status == 429 ? " Too Many Requests" : " Error") +
         "\r\nContent-Type: " + type + "\r\nContent-Length: " + std::to_string(body.size()) + "\r\nConnection: close\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\n" +
-        "Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'" + (host.empty() ? "" : " wss://" + host) + "; media-src 'self' blob:; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\r\nPermissions-Policy: microphone=(self), camera=()\r\n" + extra + "\r\n" + body;
+        "Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self'" + (host.empty() ? "" : " wss://" + host) + "; media-src 'self' blob:; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\r\nPermissions-Policy: microphone=(self), camera=()\r\n" + extra + "\r\n" + body;
 }
 std::string setupPage(const std::string& host, const std::string& fingerprint, const std::string& accessCode) {
     try {
@@ -249,22 +249,24 @@ void Server::serve(Client& client) {
         std::map<std::string,std::string> headers;
         while (std::getline(header, line)) { auto colon = line.find(':'); if (colon == std::string::npos) throw std::runtime_error("Invalid HTTP header"); auto key = lower(trim(line.substr(0, colon))); if (headers.contains(key)) throw std::runtime_error("Duplicate HTTP header"); headers[key] = trim(line.substr(colon + 1)); }
         if (version != "HTTP/1.1" || !validHost(headers["host"]) || headers.contains("transfer-encoding")) throw std::runtime_error("Invalid HTTP request");
-        if (method == "GET" && path == "/certificate.cer")
+        bool isGetOrHead = (method == "GET" || method == "HEAD");
+        if (isGetOrHead && path == "/certificate.cer")
             stream.send(response(200,"application/pkix-cert",credentials_->certificate,"Content-Disposition: attachment; filename=ft710-web-root.cer\r\n"));
-        else if (method == "GET" && path == "/station.mobileconfig")
+        else if (isGetOrHead && path == "/station.mobileconfig")
             stream.send(response(200,"application/x-apple-aspen-config",credentials_->appleProfile,"Content-Disposition: attachment; filename=ft710-station.mobileconfig\r\n"));
-        else if (method == "GET" && (path == "/setup" || path == "/wizard" || path == "/wizard.html")) stream.send(response(200,"text/html; charset=utf-8",setupPage(headers["host"],credentials_->fingerprint,accessCode_)));
-        else if (method == "GET" && path == "/disclaimer") {
+        else if (isGetOrHead && (path == "/setup" || path == "/wizard" || path == "/wizard.html")) stream.send(response(200,"text/html; charset=utf-8",setupPage(headers["host"],credentials_->fingerprint,accessCode_)));
+        else if (isGetOrHead && path == "/disclaimer") {
             std::ifstream f("DISCLAIMER.md");
             std::string disc = f ? std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>()) : "See DISCLAIMER.md in repository.";
             stream.send(response(200, "text/plain; charset=utf-8", disc));
-        } else if (method == "GET" && path == "/notice") {
+        } else if (isGetOrHead && path == "/notice") {
             std::ifstream f("NOTICE");
             std::string notc = f ? std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>()) : "See NOTICE in repository.";
             stream.send(response(200, "text/plain; charset=utf-8", notc));
         } else if (!stream.secure()) {
-            if (method == "GET" && (path == "/" || path == "/index.html" || path == "/setup" || path == "/wizard" || path == "/wizard.html")) stream.send(response(200,"text/html; charset=utf-8",setupPage(headers["host"],credentials_->fingerprint,accessCode_)));
-            else if (method == "GET" && path == "/app.css") stream.send(response(200,"text/css; charset=utf-8",resource(202)));
+            if (isGetOrHead && (path == "/" || path == "/index.html" || path == "/setup" || path == "/wizard" || path == "/wizard.html")) stream.send(response(200,"text/html; charset=utf-8",setupPage(headers["host"],credentials_->fingerprint,accessCode_)));
+            else if (isGetOrHead && path == "/app.css") stream.send(response(200,"text/css; charset=utf-8",resource(202)));
+            else if (isGetOrHead && path == "/wizard.css") stream.send(response(200,"text/css; charset=utf-8",resource(211)));
             else stream.send(response(403,"application/json","{\"error\":\"Open the HTTPS dashboard after certificate setup\"}"));
         } else {
         std::string body = input.substr(end + 4); unsigned length = 0;
@@ -297,12 +299,13 @@ void Server::serve(Client& client) {
         } else if (method == "GET" && path == "/api/state") {
             if (!authenticated(headers["cookie"])) stream.send(response(401,"application/json","{\"error\":\"Sign in first\"}"));
             else { std::string state; { std::lock_guard lock(stateMutex_); state = state_; } stream.send(response(200,"application/json",state)); }
-        } else if (method == "GET" && (path == "/" || path == "/index.html")) stream.send(response(200,"text/html; charset=utf-8",resource(201),"",headers["host"]));
-        else if (method == "GET" && path == "/app.css") stream.send(response(200,"text/css; charset=utf-8",resource(202)));
-        else if (method == "GET" && path == "/app.js") stream.send(response(200,"application/javascript; charset=utf-8",resource(203)));
-        else if (method == "GET" && path == "/audio-worklet.js") stream.send(response(200,"application/javascript; charset=utf-8",resource(204)));
-        else if (method == "GET" && path == "/audio-playback.js") stream.send(response(200,"application/javascript; charset=utf-8",resource(205)));
-        else if (method == "GET" && path == "/control-core.js") stream.send(response(200,"application/javascript; charset=utf-8",resource(207)));
+        } else if (isGetOrHead && (path == "/" || path == "/index.html")) stream.send(response(200,"text/html; charset=utf-8",resource(201),"",headers["host"]));
+        else if (isGetOrHead && path == "/app.css") stream.send(response(200,"text/css; charset=utf-8",resource(202)));
+        else if (isGetOrHead && path == "/wizard.css") stream.send(response(200,"text/css; charset=utf-8",resource(211)));
+        else if (isGetOrHead && path == "/app.js") stream.send(response(200,"application/javascript; charset=utf-8",resource(203)));
+        else if (isGetOrHead && path == "/audio-worklet.js") stream.send(response(200,"application/javascript; charset=utf-8",resource(204)));
+        else if (isGetOrHead && path == "/audio-playback.js") stream.send(response(200,"application/javascript; charset=utf-8",resource(205)));
+        else if (isGetOrHead && path == "/control-core.js") stream.send(response(200,"application/javascript; charset=utf-8",resource(207)));
         else stream.send(response(404,"application/json","{\"error\":\"Not found or request not allowed\"}"));
         }
     } catch (...) { /* Malformed/unauthenticated peers never reach radio control. */ }

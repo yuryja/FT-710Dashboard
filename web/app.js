@@ -211,7 +211,7 @@ function drawNeedleMeter(id,prop,mode){
   const canvas=$('needleCanvas'+id);
   if(!canvas)return;
   const dpr=window.devicePixelRatio||1;
-  const logicalW=280, logicalH=115;
+  const logicalW=300, logicalH=125;
   if(canvas.width!==Math.round(logicalW*dpr)||canvas.height!==Math.round(logicalH*dpr)){
     canvas.width=Math.round(logicalW*dpr);
     canvas.height=Math.round(logicalH*dpr);
@@ -221,7 +221,7 @@ function drawNeedleMeter(id,prop,mode){
   ctx.scale(dpr,dpr);
   ctx.clearRect(0,0,logicalW,logicalH);
 
-  const cx=140, cy=180, rTop=150, rBot=120;
+  const cx=150, cy=195, rTop=162, rBot=130;
   const aStart=-34*Math.PI/180, aS9=4*Math.PI/180, aEnd=32*Math.PI/180;
 
   // Top S arc (White)
@@ -251,7 +251,7 @@ function drawNeedleMeter(id,prop,mode){
   ctx.textBaseline='middle';
 
   // S Label
-  ctx.font='italic bold 13px Consolas, ui-monospace, sans-serif';
+  ctx.font='italic bold 14px Consolas, ui-monospace, sans-serif';
   ctx.fillStyle='#ffffff';
   ctx.fillText('S',cx+Math.cos(-Math.PI/2+aStart-0.05)*(rTop+1),cy+Math.sin(-Math.PI/2+aStart-0.05)*(rTop+1));
 
@@ -708,6 +708,20 @@ function setup(){
   document.querySelectorAll('[data-page]').forEach(node=>node.addEventListener('click',()=>showPage(node.dataset.page)));
   document.querySelectorAll('[data-action]').forEach(node=>node.addEventListener('click',protect(()=>command(node.dataset.action))));
   document.querySelectorAll('[data-vfo]').forEach(node=>node.addEventListener('click',protect(()=>{$('controlVfo').value=node.dataset.vfo;dirty.delete('frequency');dirty.delete('width');return command('vfo',{vfo:node.dataset.vfo},'controlVfo');})));
+  ['A','B'].forEach(name=>{
+    const card=$('card'+name), badge=$('vfoBadge'+name);
+    const selectVfo=protect(()=>{
+      if(state?.online&&state.activeVfo!==name){
+        $('controlVfo').value=name;dirty.delete('frequency');dirty.delete('width');
+        return command('vfo',{vfo:name},'controlVfo');
+      }
+    });
+    badge?.addEventListener('click',selectVfo);
+    card?.addEventListener('click',event=>{
+      if(event.target.closest('button, input, select, output, canvas, [role="button"]')) return;
+      selectVfo();
+    });
+  });
   $('loginForm').addEventListener('submit',protect(async event=>{event.preventDefault();const reply=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({code:$('accessCode').value})});const data=await reply.json();if(!reply.ok){$('loginError').textContent=data.error;return;}$('accessCode').value='';closing=false;connectWeb();}));
   $('connectionForm').addEventListener('submit',protect(event=>{event.preventDefault();clearTimeout(preferenceSaveTimer);if(state.portOpen)return command('disconnect');const fields={kind:$('connectionKind').value};for(const key of ['endpoint','baud','stopBits','flow','poll'])fields[key]=$(key).value;for(const key of ['connectionKind','endpoint','baud','stopBits','flow','poll'])dirty.delete(key);return command('connect',fields);}));
   $('connectionKind').addEventListener('change',()=>{const before=$('endpoint').value;if($('connectionKind').value==='1'&&!before.includes(':'))$('endpoint').value='127.0.0.1:4532';if($('connectionKind').value==='0'&&before.includes(':'))$('endpoint').value='COM3';if(before!==$('endpoint').value){dirty.add('endpoint');preferenceSaver.edit('endpoint');}});

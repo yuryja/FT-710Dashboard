@@ -189,6 +189,192 @@ function initializeCards() {
   cycleSpecs.forEach(([name,initial])=>{const button=element('button',initial);button.addEventListener('click',protect(()=>cycleControl(name)));$('functions').append(button);cycleElements.push({name,button});});
   functionSpecs.forEach(spec=>{const button=element('button',spec[1]);button.addEventListener('click',protect(()=>{const item=setting(spec[0]);return command('set',{setting:spec[0],value:item.value==='0'?'1':'0'});}));$('functions').append(button);functionElements.push(button);});
 }
+
+function getModeBadgeClass(mode){
+  const m=String(mode||'').toUpperCase();
+  if(m==='LSB')return 'mode-lsb';
+  if(m==='USB')return 'mode-usb';
+  if(m.startsWith('CW'))return 'mode-cw';
+  if(m.startsWith('AM'))return 'mode-am';
+  if(m.startsWith('FM'))return 'mode-fm';
+  if(m.startsWith('DATA')||m.startsWith('PKT'))return 'mode-data';
+  if(m.startsWith('RTTY')||m.startsWith('PSK'))return 'mode-rtty';
+  return 'mode-usb';
+}
+
+const needleState={
+  A:{current:0,target:0,velocity:0,mode:'S'},
+  B:{current:0,target:0,velocity:0,mode:'S'}
+};
+
+function drawNeedleMeter(id,prop,mode){
+  const canvas=$('needleCanvas'+id);
+  if(!canvas)return;
+  const dpr=window.devicePixelRatio||1;
+  const logicalW=280, logicalH=115;
+  if(canvas.width!==Math.round(logicalW*dpr)||canvas.height!==Math.round(logicalH*dpr)){
+    canvas.width=Math.round(logicalW*dpr);
+    canvas.height=Math.round(logicalH*dpr);
+  }
+  const ctx=canvas.getContext('2d');
+  ctx.save();
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,logicalW,logicalH);
+
+  const cx=140, cy=180, rTop=150, rBot=120;
+  const aStart=-34*Math.PI/180, aS9=4*Math.PI/180, aEnd=32*Math.PI/180;
+
+  // Top S arc (White)
+  ctx.beginPath();
+  ctx.arc(cx,cy,rTop,-Math.PI/2+aStart,-Math.PI/2+aS9);
+  ctx.strokeStyle='#ffffff';
+  ctx.lineWidth=2;
+  ctx.stroke();
+
+  // Over S9 arc (+dB Blue)
+  ctx.beginPath();
+  ctx.arc(cx,cy,rTop,-Math.PI/2+aS9,-Math.PI/2+aEnd);
+  ctx.strokeStyle='#3b82f6';
+  ctx.lineWidth=2.5;
+  ctx.stroke();
+
+  // Red boundary tick at S9
+  const s9Cos=Math.cos(-Math.PI/2+aS9), s9Sin=Math.sin(-Math.PI/2+aS9);
+  ctx.beginPath();
+  ctx.moveTo(cx+s9Cos*(rTop-10),cy+s9Sin*(rTop-10));
+  ctx.lineTo(cx+s9Cos*(rTop+5),cy+s9Sin*(rTop+5));
+  ctx.strokeStyle='#ef4444';
+  ctx.lineWidth=2.2;
+  ctx.stroke();
+
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+
+  // S Label
+  ctx.font='italic bold 13px Consolas, ui-monospace, sans-serif';
+  ctx.fillStyle='#ffffff';
+  ctx.fillText('S',cx+Math.cos(-Math.PI/2+aStart-0.05)*(rTop+1),cy+Math.sin(-Math.PI/2+aStart-0.05)*(rTop+1));
+
+  // S1 to S9 ticks
+  const sTicks=[
+    {a:-27*Math.PI/180,lbl:'1'},
+    {a:-19*Math.PI/180,lbl:'3'},
+    {a:-11*Math.PI/180,lbl:'5'},
+    {a:-3*Math.PI/180,lbl:'7'},
+    {a:3*Math.PI/180,lbl:'9'}
+  ];
+  ctx.font='bold 10px Consolas, ui-monospace, sans-serif';
+  for(const t of sTicks){
+    const cos=Math.cos(-Math.PI/2+t.a), sin=Math.sin(-Math.PI/2+t.a);
+    ctx.beginPath();
+    ctx.moveTo(cx+cos*(rTop-6),cy+sin*(rTop-6));
+    ctx.lineTo(cx+cos*rTop,cy+sin*rTop);
+    ctx.strokeStyle='#ffffff';
+    ctx.lineWidth=1.2;
+    ctx.stroke();
+    ctx.fillStyle='#ffffff';
+    ctx.fillText(t.lbl,cx+cos*(rTop+10),cy+sin*(rTop+10));
+  }
+
+  // +dB ticks
+  const dbTicks=[
+    {a:13*Math.PI/180,lbl:'+20'},
+    {a:21*Math.PI/180,lbl:'+40'},
+    {a:29*Math.PI/180,lbl:'+60'}
+  ];
+  ctx.font='bold 9px Consolas, ui-monospace, sans-serif';
+  for(const t of dbTicks){
+    const cos=Math.cos(-Math.PI/2+t.a), sin=Math.sin(-Math.PI/2+t.a);
+    ctx.beginPath();
+    ctx.moveTo(cx+cos*(rTop-6),cy+sin*(rTop-6));
+    ctx.lineTo(cx+cos*rTop,cy+sin*rTop);
+    ctx.strokeStyle='#3b82f6';
+    ctx.lineWidth=1.4;
+    ctx.stroke();
+    ctx.fillStyle='#60a5fa';
+    ctx.fillText(t.lbl,cx+cos*(rTop+10),cy+sin*(rTop+10));
+  }
+  ctx.font='italic bold 10px Consolas, ui-monospace, sans-serif';
+  ctx.fillStyle='#60a5fa';
+  ctx.fillText('dB',cx+Math.cos(-Math.PI/2+aEnd+0.04)*(rTop+14),cy+Math.sin(-Math.PI/2+aEnd+0.04)*(rTop+14));
+
+  // Bottom Arc (COMP / Multi-meter)
+  const aBotStart=-28*Math.PI/180, aBotEnd=26*Math.PI/180;
+  ctx.beginPath();
+  ctx.arc(cx,cy,rBot,-Math.PI/2+aBotStart,-Math.PI/2+aBotEnd);
+  ctx.strokeStyle='rgba(255,255,255,0.6)';
+  ctx.lineWidth=1.5;
+  ctx.stroke();
+
+  ctx.font='italic bold 9px Consolas, ui-monospace, sans-serif';
+  ctx.fillStyle='#cbd5e1';
+  ctx.fillText(mode==='PO'?'PO':'COMP',cx+Math.cos(-Math.PI/2+aBotStart-0.08)*(rBot-12),cy+Math.sin(-Math.PI/2+aBotStart-0.08)*(rBot-12));
+
+  const compTicks=mode==='PO'?[
+    {a:-25*Math.PI/180,lbl:'0'},
+    {a:-12*Math.PI/180,lbl:'25'},
+    {a:1*Math.PI/180,lbl:'50'},
+    {a:14*Math.PI/180,lbl:'75'},
+    {a:24*Math.PI/180,lbl:'100'}
+  ]:[
+    {a:-25*Math.PI/180,lbl:'0'},
+    {a:-13*Math.PI/180,lbl:'5'},
+    {a:-1*Math.PI/180,lbl:'10'},
+    {a:11*Math.PI/180,lbl:'15'},
+    {a:23*Math.PI/180,lbl:'20'}
+  ];
+  ctx.font='bold 9px Consolas, ui-monospace, sans-serif';
+  for(const t of compTicks){
+    const cos=Math.cos(-Math.PI/2+t.a), sin=Math.sin(-Math.PI/2+t.a);
+    ctx.beginPath();
+    ctx.moveTo(cx+cos*(rBot-5),cy+sin*(rBot-5));
+    ctx.lineTo(cx+cos*rBot,cy+sin*rBot);
+    ctx.strokeStyle='rgba(255,255,255,0.6)';
+    ctx.lineWidth=1;
+    ctx.stroke();
+    ctx.fillStyle='#e2e8f0';
+    ctx.fillText(t.lbl,cx+cos*(rBot-11),cy+sin*(rBot-11));
+  }
+  ctx.font='italic 8px Consolas, ui-monospace, sans-serif';
+  ctx.fillStyle='#cbd5e1';
+  ctx.fillText(mode==='PO'?'W':'dB',cx+Math.cos(-Math.PI/2+aBotEnd+0.06)*(rBot-10),cy+Math.sin(-Math.PI/2+aBotEnd+0.06)*(rBot-10));
+
+  // Smooth Analog Needle
+  const clampedProp=Math.max(0,Math.min(1.05,prop));
+  const needleAngle=aStart+clampedProp*(aEnd-aStart);
+  const nCos=Math.cos(-Math.PI/2+needleAngle), nSin=Math.sin(-Math.PI/2+needleAngle);
+
+  ctx.beginPath();
+  ctx.moveTo(cx+nCos*30,cy+nSin*30);
+  ctx.lineTo(cx+nCos*(rTop+5),cy+nSin*(rTop+5));
+  ctx.strokeStyle='#ef4444';
+  ctx.lineWidth=2;
+  ctx.shadowColor='rgba(239,68,68,0.6)';
+  ctx.shadowBlur=5;
+  ctx.stroke();
+
+  ctx.shadowBlur=0;
+  ctx.restore();
+}
+
+let needleAnimId=null;
+function startNeedleLoop(){
+  if(needleAnimId)return;
+  const tension=0.088, damping=0.77;
+  function frame(){
+    for(const id of ['A','B']){
+      const n=needleState[id];
+      const force=(n.target-n.current)*tension;
+      n.velocity=(n.velocity+force)*damping;
+      n.current+=n.velocity;
+      drawNeedleMeter(id,n.current,n.mode);
+    }
+    needleAnimId=requestAnimationFrame(frame);
+  }
+  needleAnimId=requestAnimationFrame(frame);
+}
+startNeedleLoop();
+
 function render(next) {
   const previous=state;state=next;const live=state.online&&!state.busy, tx=state.pttKnown&&state.transmitting;
   if(previous && previous.generation!==state.generation) { edits.clear();for(const key of [...dirty])if(!preferenceSaver?.versions.has(key))dirty.delete(key);tuningQueue?.clear();stopClientAudio();scopeRows=[];scopeBins=null;scopePeaks=null;scopeGeneration=-1;rfHistory.clear();rfRows=[];rfBins=null; }
@@ -455,9 +641,13 @@ function drawRfSpectrumCanvas(canvasId,detailId,compact=false){
   const item=canvasContext(canvasId);if(!item)return;
   const center=rfCenterHz||state?.rfScope?.centerHz||state?.vfos?.[state.activeVfo==='B'?1:0]?.frequency||0,span=rfSpanHz||200000;
   const {context:c,width,height}=item;c.fillStyle='#08101d';c.fillRect(0,0,width,height);c.font='11px system-ui';
-  const plot={c,x:54,y:8,w:width-70,h:height-35},divisions=compact?2:4;const {x,y,w,h}=plot;
+  const showFreqLabels=canvasId!=='rfSpectrumCanvas'||height>90;
+  const plot={c,x:54,y:5,w:width-70,h:showFreqLabels?height-35:Math.max(10,height-10)},divisions=compact?2:4;const {x,y,w,h}=plot;
   c.strokeStyle='#1f3040';c.fillStyle='#8da2b8';c.lineWidth=1;
-  for(let i=0;i<=divisions;i++){const px=x+w*i/divisions;c.beginPath();c.moveTo(px,y);c.lineTo(px,y+h);c.stroke();c.textAlign=i===0?'left':i===divisions?'right':'center';const hz=center?center-span/2+span*i/divisions:0;c.fillText(center?frequency(hz):`${Math.round((i/divisions-.5)*span/1000)} kHz`,px,y+h+20);}
+  for(let i=0;i<=divisions;i++){
+    const px=x+w*i/divisions;c.beginPath();c.moveTo(px,y);c.lineTo(px,y+h);c.stroke();
+    if(showFreqLabels){c.textAlign=i===0?'left':i===divisions?'right':'center';const hz=center?center-span/2+span*i/divisions:0;c.fillText(center?frequency(hz):`${Math.round((i/divisions-.5)*span/1000)} kHz`,px,y+h+20);}
+  }
   for(let i=0;i<=4;i++){const py=y+h*i/4;c.beginPath();c.moveTo(x,py);c.lineTo(x+w,py);c.stroke();}
   if(rfBins){c.strokeStyle='#50d3c2';c.lineWidth=1.5;c.beginPath();for(let i=0;i<rfBins.length;i++){const px=x+w*i/(rfBins.length-1),py=y+h*(1-rfBins[i]/255);if(i)c.lineTo(px,py);else c.moveTo(px,py);}c.stroke();let peak=0;for(let i=1;i<rfBins.length;i++)if(rfBins[i]>rfBins[peak])peak=i;setText($(detailId),`${center?frequency(center)+' center':'Center unavailable'} · ${(span/1000).toLocaleString()} kHz · peak ${((peak/rfBins.length-.5)*span/1000>=0?'+':'')}${((peak/rfBins.length-.5)*span/1000).toFixed(1)} kHz`);}
   else{c.fillStyle='#8da2b8';c.textAlign='center';c.fillText('Waiting for RF scope frames',x+w/2,y+h/2);setText($(detailId),compact?'Tap spectrum to tune · waiting for RF frames':'No FT4222 RF scope frames');}
@@ -478,7 +668,7 @@ function drawRfWaterfallCanvas(canvasId,detailId,compact=false){
   const fresh=state?.rfScope?.frameValid&&rfHistory.fresh();setText($(detailId),rfRows.length?(fresh?(compact?`${Math.min(rfRows.length,rows)} rows · newest at top`:`${rfRows.length} frames · newest at top`):'Frozen history · waiting for fresh RF frames'):(compact?'Waiting for RF frames':'No RF frames received'));
 }
 function drawRfScope(){
-  drawMobileRfPreview();if(!$('rfScope')||$('rfScope').hidden)return;
+  drawMobileRfPreview();if(!$('dashboard')||$('dashboard').hidden)return;
   drawRfSpectrumCanvas('rfSpectrumCanvas','rfSpectrumDetail');
   drawRfWaterfallCanvas('rfWaterfallCanvas','rfWaterfallDetail');
 }
@@ -539,191 +729,6 @@ function setup(){
   $('dial').addEventListener('pointerdown',event=>{if(!state?.online)return;drag=event.pointerId;lastX=event.clientX;motion=0;$('dial').setPointerCapture(drag);});$('dial').addEventListener('pointermove',event=>{if(drag!==event.pointerId)return;motion+=event.clientX-lastX;lastX=event.clientX;const count=Math.trunc(motion/12);if(count){motion-=count*12;queue(count);}});for(const name of ['pointerup','pointercancel','lostpointercapture'])$('dial').addEventListener(name,()=>{drag=undefined;tuningQueue.flush().catch(error=>notify(error.message));});
   $('dial').addEventListener('keydown',protect(event=>{if(['ArrowLeft','ArrowDown','ArrowRight','ArrowUp','PageUp','PageDown'].includes(event.key)){event.preventDefault();return tune(event.key==='PageUp'?10:event.key==='PageDown'?-10:event.key==='ArrowLeft'||event.key==='ArrowDown'?-1:1);}}));
   for(const id of ['dial','freqA','freqB'])$(id).addEventListener('wheel',event=>{event.preventDefault();queue(event.deltaY<0?1:-1,id==='dial'?$('controlVfo').value:id==='freqB'?'B':'A');},{passive:false});
-
-  function getModeBadgeClass(mode){
-    const m=String(mode||'').toUpperCase();
-    if(m==='LSB')return 'mode-lsb';
-    if(m==='USB')return 'mode-usb';
-    if(m.startsWith('CW'))return 'mode-cw';
-    if(m.startsWith('AM'))return 'mode-am';
-    if(m.startsWith('FM'))return 'mode-fm';
-    if(m.startsWith('DATA')||m.startsWith('PKT'))return 'mode-data';
-    if(m.startsWith('RTTY')||m.startsWith('PSK'))return 'mode-rtty';
-    return 'mode-usb';
-  }
-
-  const needleState={
-    A:{current:0,target:0,velocity:0,mode:'S'},
-    B:{current:0,target:0,velocity:0,mode:'S'}
-  };
-
-  function drawNeedleMeter(id,prop,mode){
-    const canvas=$('needleCanvas'+id);
-    if(!canvas)return;
-    const dpr=window.devicePixelRatio||1;
-    const logicalW=280, logicalH=115;
-    if(canvas.width!==Math.round(logicalW*dpr)||canvas.height!==Math.round(logicalH*dpr)){
-      canvas.width=Math.round(logicalW*dpr);
-      canvas.height=Math.round(logicalH*dpr);
-    }
-    const ctx=canvas.getContext('2d');
-    ctx.save();
-    ctx.scale(dpr,dpr);
-    ctx.clearRect(0,0,logicalW,logicalH);
-
-    const cx=140, cy=180, rTop=150, rBot=120;
-    const aStart=-34*Math.PI/180, aS9=4*Math.PI/180, aEnd=32*Math.PI/180;
-
-    // Top S arc (White)
-    ctx.beginPath();
-    ctx.arc(cx,cy,rTop,-Math.PI/2+aStart,-Math.PI/2+aS9);
-    ctx.strokeStyle='#ffffff';
-    ctx.lineWidth=2;
-    ctx.stroke();
-
-    // Over S9 arc (+dB Blue)
-    ctx.beginPath();
-    ctx.arc(cx,cy,rTop,-Math.PI/2+aS9,-Math.PI/2+aEnd);
-    ctx.strokeStyle='#3b82f6';
-    ctx.lineWidth=2.5;
-    ctx.stroke();
-
-    // Red boundary tick at S9
-    const s9Cos=Math.cos(-Math.PI/2+aS9), s9Sin=Math.sin(-Math.PI/2+aS9);
-    ctx.beginPath();
-    ctx.moveTo(cx+s9Cos*(rTop-10),cy+s9Sin*(rTop-10));
-    ctx.lineTo(cx+s9Cos*(rTop+5),cy+s9Sin*(rTop+5));
-    ctx.strokeStyle='#ef4444';
-    ctx.lineWidth=2.2;
-    ctx.stroke();
-
-    ctx.textAlign='center';
-    ctx.textBaseline='middle';
-
-    // S Label
-    ctx.font='italic bold 13px Consolas, ui-monospace, sans-serif';
-    ctx.fillStyle='#ffffff';
-    ctx.fillText('S',cx+Math.cos(-Math.PI/2+aStart-0.05)*(rTop+1),cy+Math.sin(-Math.PI/2+aStart-0.05)*(rTop+1));
-
-    // S1 to S9 ticks
-    const sTicks=[
-      {a:-27*Math.PI/180,lbl:'1'},
-      {a:-19*Math.PI/180,lbl:'3'},
-      {a:-11*Math.PI/180,lbl:'5'},
-      {a:-3*Math.PI/180,lbl:'7'},
-      {a:3*Math.PI/180,lbl:'9'}
-    ];
-    ctx.font='bold 10px Consolas, ui-monospace, sans-serif';
-    for(const t of sTicks){
-      const cos=Math.cos(-Math.PI/2+t.a), sin=Math.sin(-Math.PI/2+t.a);
-      ctx.beginPath();
-      ctx.moveTo(cx+cos*(rTop-6),cy+sin*(rTop-6));
-      ctx.lineTo(cx+cos*rTop,cy+sin*rTop);
-      ctx.strokeStyle='#ffffff';
-      ctx.lineWidth=1.2;
-      ctx.stroke();
-      ctx.fillStyle='#ffffff';
-      ctx.fillText(t.lbl,cx+cos*(rTop+10),cy+sin*(rTop+10));
-    }
-
-    // +dB ticks
-    const dbTicks=[
-      {a:13*Math.PI/180,lbl:'+20'},
-      {a:21*Math.PI/180,lbl:'+40'},
-      {a:29*Math.PI/180,lbl:'+60'}
-    ];
-    ctx.font='bold 9px Consolas, ui-monospace, sans-serif';
-    for(const t of dbTicks){
-      const cos=Math.cos(-Math.PI/2+t.a), sin=Math.sin(-Math.PI/2+t.a);
-      ctx.beginPath();
-      ctx.moveTo(cx+cos*(rTop-6),cy+sin*(rTop-6));
-      ctx.lineTo(cx+cos*rTop,cy+sin*rTop);
-      ctx.strokeStyle='#3b82f6';
-      ctx.lineWidth=1.4;
-      ctx.stroke();
-      ctx.fillStyle='#60a5fa';
-      ctx.fillText(t.lbl,cx+cos*(rTop+10),cy+sin*(rTop+10));
-    }
-    ctx.font='italic bold 10px Consolas, ui-monospace, sans-serif';
-    ctx.fillStyle='#60a5fa';
-    ctx.fillText('dB',cx+Math.cos(-Math.PI/2+aEnd+0.04)*(rTop+14),cy+Math.sin(-Math.PI/2+aEnd+0.04)*(rTop+14));
-
-    // Bottom Arc (COMP / Multi-meter)
-    const aBotStart=-28*Math.PI/180, aBotEnd=26*Math.PI/180;
-    ctx.beginPath();
-    ctx.arc(cx,cy,rBot,-Math.PI/2+aBotStart,-Math.PI/2+aBotEnd);
-    ctx.strokeStyle='rgba(255,255,255,0.6)';
-    ctx.lineWidth=1.5;
-    ctx.stroke();
-
-    ctx.font='italic bold 9px Consolas, ui-monospace, sans-serif';
-    ctx.fillStyle='#cbd5e1';
-    ctx.fillText(mode==='PO'?'PO':'COMP',cx+Math.cos(-Math.PI/2+aBotStart-0.08)*(rBot-12),cy+Math.sin(-Math.PI/2+aBotStart-0.08)*(rBot-12));
-
-    const compTicks=mode==='PO'?[
-      {a:-25*Math.PI/180,lbl:'0'},
-      {a:-12*Math.PI/180,lbl:'25'},
-      {a:1*Math.PI/180,lbl:'50'},
-      {a:14*Math.PI/180,lbl:'75'},
-      {a:24*Math.PI/180,lbl:'100'}
-    ]:[
-      {a:-25*Math.PI/180,lbl:'0'},
-      {a:-13*Math.PI/180,lbl:'5'},
-      {a:-1*Math.PI/180,lbl:'10'},
-      {a:11*Math.PI/180,lbl:'15'},
-      {a:23*Math.PI/180,lbl:'20'}
-    ];
-    ctx.font='bold 9px Consolas, ui-monospace, sans-serif';
-    for(const t of compTicks){
-      const cos=Math.cos(-Math.PI/2+t.a), sin=Math.sin(-Math.PI/2+t.a);
-      ctx.beginPath();
-      ctx.moveTo(cx+cos*(rBot-5),cy+sin*(rBot-5));
-      ctx.lineTo(cx+cos*rBot,cy+sin*rBot);
-      ctx.strokeStyle='rgba(255,255,255,0.6)';
-      ctx.lineWidth=1;
-      ctx.stroke();
-      ctx.fillStyle='#e2e8f0';
-      ctx.fillText(t.lbl,cx+cos*(rBot-11),cy+sin*(rBot-11));
-    }
-    ctx.font='italic 8px Consolas, ui-monospace, sans-serif';
-    ctx.fillStyle='#cbd5e1';
-    ctx.fillText(mode==='PO'?'W':'dB',cx+Math.cos(-Math.PI/2+aBotEnd+0.06)*(rBot-10),cy+Math.sin(-Math.PI/2+aBotEnd+0.06)*(rBot-10));
-
-    // Smooth Analog Needle
-    const clampedProp=Math.max(0,Math.min(1.05,prop));
-    const needleAngle=aStart+clampedProp*(aEnd-aStart);
-    const nCos=Math.cos(-Math.PI/2+needleAngle), nSin=Math.sin(-Math.PI/2+needleAngle);
-
-    ctx.beginPath();
-    ctx.moveTo(cx+nCos*30,cy+nSin*30);
-    ctx.lineTo(cx+nCos*(rTop+5),cy+nSin*(rTop+5));
-    ctx.strokeStyle='#ef4444';
-    ctx.lineWidth=2;
-    ctx.shadowColor='rgba(239,68,68,0.6)';
-    ctx.shadowBlur=5;
-    ctx.stroke();
-
-    ctx.shadowBlur=0;
-    ctx.restore();
-  }
-
-  let needleAnimId=null;
-  function startNeedleLoop(){
-    if(needleAnimId)return;
-    const tension=0.088, damping=0.77;
-    function frame(){
-      for(const id of ['A','B']){
-        const n=needleState[id];
-        const force=(n.target-n.current)*tension;
-        n.velocity=(n.velocity+force)*damping;
-        n.current+=n.velocity;
-        drawNeedleMeter(id,n.current,n.mode);
-      }
-      needleAnimId=requestAnimationFrame(frame);
-    }
-    needleAnimId=requestAnimationFrame(frame);
-  }
-  startNeedleLoop();
 
   function formatStepLabel(hz){if(hz>=1e6)return (hz/1e6)+' MHz';if(hz>=1e3)return (hz/1e3)+' kHz';return hz+' Hz';}
   function updateVfoStepBadges(){const cur=Number(localStorage.getItem('step')||$('step')?.value||'100');const lbl=formatStepLabel(cur)+' step';['A','B'].forEach(name=>{if($('step'+name)){setText($('step'+name),lbl);const isAct=state?.online&&state?.activeVfo===name;$('step'+name).style.display=isAct?'inline-flex':'none';}});}

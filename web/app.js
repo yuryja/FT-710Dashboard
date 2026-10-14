@@ -234,7 +234,69 @@ function render(next) {
     if(!Number.isFinite(raw))valid=false;if(item?.txOnly&&!tx)note=state.pttKnown?'TX only':'TX status unavailable';else if(item?.age>2000)note='Stale / waiting for CAT';
     if(index===1){const power=setting('level.RFPOWER');if(power?.valid)note=(valid?'Measured · set ':'TX only · set ')+Math.round(Number(power.value)*100)+' W';}
     if(index===3&&valid)note='ALC reference scale';if(index===0&&valid)note=raw+' dB relative to S9';
-    const elements=meterElements[index];setText(elements.output,valid?format(raw):'--');setText(elements.note,note);elements.fill.style.width=(valid?Math.max(0,Math.min(1,proportion(raw)))*100:0)+'%';elements.output.style.color=index===2&&raw>=3&&valid?'var(--red)':index===2&&raw>=2&&valid?'var(--amber)':'var(--mint)';
+    const elements=meterElements[index];if(elements){setText(elements.output,valid?format(raw):'--');setText(elements.note,note);elements.fill.style.width=(valid?Math.max(0,Math.min(1,proportion(raw)))*100:0)+'%';elements.output.style.color=index===2&&raw>=3&&valid?'var(--red)':index===2&&raw>=2&&valid?'var(--amber)':'var(--mint)';}
+  });
+
+  // Yaesu FT-710 Style S-Meter and Multi-Meter updates for each VFO
+  const sigItem=setting('level.STRENGTH'),sigRaw=Number(sigItem?.value),sigValid=live&&sigItem?.valid&&sigItem.age<=2000&&!tx;
+  const sigProp=sigValid&&Number.isFinite(sigRaw)?Math.max(0,Math.min(1,(sigRaw+54)/114)):0;
+  const sigMain=sigValid?(sigRaw>=0?'S9'+(sigRaw>0?' +'+Math.round(sigRaw)+'dB':''):'S'+Math.max(0,Math.min(9,Math.round((sigRaw+54)/6)))):'--';
+  const sigSub=sigValid?(sigRaw>=0?'+':'')+sigRaw.toFixed(1)+' dB rel S9':'No signal';
+
+  let pwrItem=setting('level.RFPOWER_METER_WATTS')||setting('level.RFPOWER_METER'),pwrRaw=Number(pwrItem?.value);
+  if(pwrItem?.id==='level.RFPOWER_METER')pwrRaw*=100;
+  const pwrValid=live&&pwrItem?.valid&&pwrItem.age<=2000&&tx;
+  const pwrProp=pwrValid&&Number.isFinite(pwrRaw)?Math.max(0,Math.min(1,pwrRaw/100)):0;
+  const pwrVal=pwrValid?pwrRaw.toFixed(1)+' W':'--';
+
+  const swrItem=setting('level.SWR'),swrRaw=Number(swrItem?.value),swrValid=live&&swrItem?.valid&&swrItem.age<=2000&&tx;
+  const swrProp=swrValid&&Number.isFinite(swrRaw)?Math.max(0,Math.min(1,(swrRaw-1)/3)):0;
+  const swrVal=swrValid?swrRaw.toFixed(1):'--';
+
+  const alcItem=setting('level.ALC'),alcRaw=Number(alcItem?.value),alcValid=live&&alcItem?.valid&&alcItem.age<=2000&&tx;
+  const alcProp=alcValid&&Number.isFinite(alcRaw)?Math.max(0,Math.min(1,alcRaw)):0;
+  const alcVal=alcValid?(alcRaw*100).toFixed(0)+'%':'--';
+
+  const compItem=setting('level.COMP_METER'),compRaw=Number(compItem?.value),compValid=live&&compItem?.valid&&compItem.age<=2000&&tx;
+  const compProp=compValid&&Number.isFinite(compRaw)?Math.max(0,Math.min(1,compRaw/20)):0;
+  const compVal=compValid?compRaw.toFixed(1)+' dB':'--';
+
+  const idItem=setting('level.ID_METER'),idRaw=Number(idItem?.value),idValid=live&&idItem?.valid&&idItem.age<=2000&&tx;
+  const idProp=idValid&&Number.isFinite(idRaw)?Math.max(0,Math.min(1,idRaw/25)):0;
+  const idVal=idValid?idRaw.toFixed(1)+' A':'--';
+
+  ['A','B'].forEach(name=>{
+    const isActive=state.online&&state.activeVfo===name;
+    if(!$('smeter'+name))return;
+    if(tx&&isActive){
+      setText($('smeterBadge'+name),'PO');
+      $('smeterBadge'+name).className='smeter-mode-badge tx';
+      setText($('smeterVal'+name),pwrValid?pwrVal:'TX');
+      const setPwr=setting('level.RFPOWER');
+      setText($('smeterSub'+name),setPwr?.valid?'TX · Set '+Math.round(Number(setPwr.value)*100)+' W':'Transmitting');
+      $('smeterFill'+name).style.width=(pwrProp*100)+'%';
+      $('smeterPeak'+name).style.left=(pwrProp*100)+'%';
+    }else{
+      setText($('smeterBadge'+name),'S');
+      $('smeterBadge'+name).className='smeter-mode-badge rx';
+      if(isActive&&live){
+        setText($('smeterVal'+name),sigValid?sigMain:'S0');
+        setText($('smeterSub'+name),sigSub);
+        $('smeterFill'+name).style.width=(sigProp*100)+'%';
+        $('smeterPeak'+name).style.left=(sigProp*100)+'%';
+      }else{
+        setText($('smeterVal'+name),'--');
+        setText($('smeterSub'+name),'Standby');
+        $('smeterFill'+name).style.width='0%';
+        $('smeterPeak'+name).style.left='0%';
+      }
+    }
+    setText($('valPo'+name),pwrVal);$('barPo'+name).style.width=(pwrProp*100)+'%';
+    setText($('valSwr'+name),swrVal);$('barSwr'+name).style.width=(swrProp*100)+'%';
+    $('chipSwr'+name).classList.toggle('warning',swrValid&&swrRaw>=2.0);
+    setText($('valAlc'+name),alcVal);$('barAlc'+name).style.width=(alcProp*100)+'%';
+    setText($('valComp'+name),compVal);$('barComp'+name).style.width=(compProp*100)+'%';
+    setText($('valId'+name),idVal);$('barId'+name).style.width=(idProp*100)+'%';
   });
   gainSpecs.forEach(([id,label,scale],index)=>{
     const item=setting(id),elements=gainElements[index];

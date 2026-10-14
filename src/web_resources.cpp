@@ -30,6 +30,7 @@ std::string relativePathFor(unsigned id) {
         case 204: return "audio-worklet.js";
         case 205: return "audio-playback.js";
         case 207: return "control-core.js";
+        case 210: return "wizard.html";
         default: return "";
     }
 }

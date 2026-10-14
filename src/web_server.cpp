@@ -51,7 +51,22 @@ std::string response(unsigned status, const std::string& type, const std::string
         "\r\nContent-Type: " + type + "\r\nContent-Length: " + std::to_string(body.size()) + "\r\nConnection: close\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\n" +
         "Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'" + (host.empty() ? "" : " wss://" + host) + "; media-src 'self' blob:; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\r\nPermissions-Policy: microphone=(self), camera=()\r\n" + extra + "\r\n" + body;
 }
-std::string setupPage(const std::string& host, const std::string& fingerprint) {
+std::string setupPage(const std::string& host, const std::string& fingerprint, const std::string& accessCode) {
+    try {
+        std::string html = resource(210);
+        auto replaceAll = [](std::string& str, const std::string& from, const std::string& to) {
+            std::size_t pos = 0;
+            while ((pos = str.find(from, pos)) != std::string::npos) {
+                str.replace(pos, from.length(), to);
+                pos += to.length();
+            }
+        };
+        replaceAll(html, "{{HOST}}", host);
+        replaceAll(html, "{{FINGERPRINT}}", fingerprint);
+        replaceAll(html, "{{ACCESS_CODE}}", accessCode);
+        return html;
+    } catch (...) {}
+
     // Host is restricted to URL-safe address characters before reaching here.
     return "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
         "<title>FT-710 web access</title><link rel=\"stylesheet\" href=\"/app.css\"></head><body><main class=\"login panel\">"
@@ -60,12 +75,9 @@ std::string setupPage(const std::string& host, const std::string& fingerprint) {
         "<ol><li><a href=\"/station.mobileconfig\">Download the iPhone / iPad certificate profile</a>. Allow the download when Safari asks.</li>"
         "<li>Open <b>Settings &rarr; Profile Downloaded</b> and tap <b>Install</b>. If that item is missing, look in <b>General &rarr; VPN &amp; Device Management</b>.</li>"
         "<li>Open <b>Settings &rarr; General &rarr; About &rarr; Certificate Trust Settings</b>. Enable full trust for <b>M0NXD FT710 Local Web Root</b>.</li>"
-        "<li>Return to Safari and <a href=\"https://" + host + "/\">open the HTTPS dashboard</a>. Enter the access code shown by <b>Web: 8888</b> in the desktop app.</li></ol>"
-        "<p>In <b>Audio routing</b>, choose the radio USB devices, select <b>Use browser audio mappings</b>, then tap <b>Listen in this browser</b> and <b>Arm browser microphone</b>. Allow microphone access when Safari asks.</p>"
-        "<p>This profile contains only the station's public root certificate. Compare its SHA-256 fingerprint with the desktop <b>Web: 8888</b> dialog:</p><pre>" + fingerprint + "</pre>"
+        "<li>Return to Safari and <a href=\"https://" + host + "/\">open the HTTPS dashboard</a>. Access code: <b>" + accessCode + "</b></li></ol>"
+        "<p>This profile contains only the station's public root certificate:</p><pre>" + fingerprint + "</pre>"
         "<p><a href=\"/certificate.cer\">Download the root certificate for another device</a></p>"
-        "<p><a href=\"https://support.apple.com/en-gb/102390\" rel=\"noreferrer\">Apple's certificate trust instructions</a></p>"
-        "<p>Keep the dashboard running. This HTTP page is only for certificate setup; it does not accept station sign-ins or radio commands.</p>"
         "</main></body></html>";
 }
 bool frame(Stream& stream, unsigned opcode, const std::string& payload) {
@@ -241,7 +253,7 @@ void Server::serve(Client& client) {
             stream.send(response(200,"application/pkix-cert",credentials_->certificate,"Content-Disposition: attachment; filename=ft710-web-root.cer\r\n"));
         else if (method == "GET" && path == "/station.mobileconfig")
             stream.send(response(200,"application/x-apple-aspen-config",credentials_->appleProfile,"Content-Disposition: attachment; filename=ft710-station.mobileconfig\r\n"));
-        else if (method == "GET" && path == "/setup") stream.send(response(200,"text/html; charset=utf-8",setupPage(headers["host"],credentials_->fingerprint)));
+        else if (method == "GET" && (path == "/setup" || path == "/wizard" || path == "/wizard.html")) stream.send(response(200,"text/html; charset=utf-8",setupPage(headers["host"],credentials_->fingerprint,accessCode_)));
         else if (method == "GET" && path == "/disclaimer") {
             std::ifstream f("DISCLAIMER.md");
             std::string disc = f ? std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>()) : "See DISCLAIMER.md in repository.";
@@ -251,7 +263,7 @@ void Server::serve(Client& client) {
             std::string notc = f ? std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>()) : "See NOTICE in repository.";
             stream.send(response(200, "text/plain; charset=utf-8", notc));
         } else if (!stream.secure()) {
-            if (method == "GET" && (path == "/" || path == "/index.html")) stream.send(response(200,"text/html; charset=utf-8",setupPage(headers["host"],credentials_->fingerprint)));
+            if (method == "GET" && (path == "/" || path == "/index.html" || path == "/setup" || path == "/wizard" || path == "/wizard.html")) stream.send(response(200,"text/html; charset=utf-8",setupPage(headers["host"],credentials_->fingerprint,accessCode_)));
             else if (method == "GET" && path == "/app.css") stream.send(response(200,"text/css; charset=utf-8",resource(202)));
             else stream.send(response(403,"application/json","{\"error\":\"Open the HTTPS dashboard after certificate setup\"}"));
         } else {

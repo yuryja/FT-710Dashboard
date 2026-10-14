@@ -1,0 +1,27 @@
+FT-710 Dashboard for macOS
+Copyright 2026 Yury Jajitzky (YY3BIG)
+
+This product was developed and ported to macOS by:
+  Yury Jajitzky (Amateur Radio Call sign: YY3BIG)
+  Repository: https://github.com/YY3BIG/FT-710Dashboard-macOS
+
+Based upon and derived from:
+  FT-710 Dashboard for Windows (v2.0.5)
+  Copyright (c) M0NXD
+  Original Repository: https://github.com/M0NXD/FT-710Dashboard
+
+-----------------------------------------------------------------------------
+MANDATORY ATTRIBUTION CLAUSE (Apache License 2.0, Section 4(d)):
+
+Any redistribution, fork, modification, repackaging, or derivative work of this
+software in Source or Object form MUST retain this NOTICE file, and MUST
+prominently display visible attribution to:
+  "Yury Jajitzky (YY3BIG) - FT-710 Dashboard for macOS"
+in all user documentation, about/credits screens, and distribution manifests.
+-----------------------------------------------------------------------------
+
+Third-Party Components and Attributions:
+- Hamlib 4.7.2: Copyright (c) The Hamlib Group and contributors (LGPL 2.1+)
+- PortAudio 19.7.0: Copyright (c) Ross Bencina, Phil Burk and contributors (MIT/BSD)
+- OpenSSL: Copyright (c) The OpenSSL Project (Apache 2.0)
+- FTDI D2XX & FT4222: Copyright (c) Future Technology Devices International Ltd.

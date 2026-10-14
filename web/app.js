@@ -16,6 +16,14 @@ const meterSpecs = [
   ['level.ID_METER','DRAIN CURRENT',v=>v.toFixed(1)+' A',v=>v/25]
 ];
 const gainSpecs = [['level.AF','AF gain (%)',100],['level.RF','RF gain (%)',100],['level.RFPOWER','RF power (W)',100],['level.MICGAIN','Mic gain (%)',100],['level.SQL','Squelch (%)',100],['level.IF','IF shift (Hz)',1]];
+const gainPresets = [
+  [{label:'Mute (0%)',val:0},{label:'10%',val:10},{label:'25%',val:25},{label:'50%',val:50},{label:'75%',val:75},{label:'100%',val:100}],
+  [{label:'Min (0%)',val:0},{label:'25%',val:25},{label:'50%',val:50},{label:'75%',val:75},{label:'Max (100%)',val:100}],
+  [{label:'5 W (QRP)',val:5},{label:'10 W',val:10},{label:'25 W',val:25},{label:'50 W',val:50},{label:'100 W (Max)',val:100}],
+  [{label:'10%',val:10},{label:'25%',val:25},{label:'50%',val:50},{label:'75%',val:75},{label:'100%',val:100}],
+  [{label:'Open (0%)',val:0},{label:'15%',val:15},{label:'30%',val:30},{label:'50%',val:50},{label:'Tight (100%)',val:100}],
+  [{label:'-1000',val:-1000},{label:'-500',val:-500},{label:'Center (0)',val:0},{label:'+500',val:500},{label:'+1000',val:1000}]
+];
 const cycleSpecs = [['preamp','Preamp: IPO'],['dnr','DNR: Off'],['nb','NB: Off']];
 const functionSpecs = [['func.ANF','Auto notch'],['func.APF','APF'],['func.MON','Monitor'],['func.COMP','Processor'],['func.VOX','VOX'],['func.LOCK','Dial lock'],['func.TUNER','Tuner']];
 const meterElements = [], gainElements = [], cycleElements = [], functionElements = [], settingRows = new Map();
@@ -130,9 +138,53 @@ function initializeCards() {
     bar.append(fill);card.append(title,output,bar,note);$('meters').append(card);meterElements.push({output,fill,note});
   }
   gainSpecs.forEach((spec,index)=>{
-    const form=element('form',undefined,'gain-form'), label=element('div',undefined,'gain-label'), title=element('b',spec[1]), readback=element('small','Radio: --'), input=element('input'), button=element('button','Set');
-    input.id='gain'+index;input.type='number';input.step='any';input.setAttribute('aria-label',spec[1]);input.addEventListener('input',()=>dirty.add(input.id));label.append(title,readback);form.append(label,input,button);$('quickGains').append(form);gainElements.push({input,button,readback});
-    form.addEventListener('submit',protect(async event=>{event.preventDefault();await command('set',{setting:spec[0],value:String(Number(input.value)/spec[2])},input.id);}));
+    const card=element('div',undefined,'gain-card'), label=element('div',undefined,'gain-label'), title=element('b',spec[1]), readback=element('small','Radio: --');
+    const sliderRow=element('div',undefined,'gain-slider-row');
+    const slider=element('input');slider.type='range';slider.id='gainRange'+index;
+    const [min,max,step] = index===2 ? [5,100,1] : index===5 ? [-1200,1200,20] : [0,100,1];
+    slider.min=min;slider.max=max;slider.step=step;
+    const inputGroup=element('div',undefined,'gain-input-group');
+    const input=element('input');input.id='gain'+index;input.type='number';input.step='any';input.setAttribute('aria-label',spec[1]);input.addEventListener('input',()=>dirty.add(input.id));
+    const button=element('button','Set');button.type='button';
+    inputGroup.append(input,button);
+    sliderRow.append(slider,inputGroup);
+
+    const presetRow=element('div',undefined,'log-presets');
+    const presets=gainPresets[index]||[];
+    const presetButtons=[];
+    presets.forEach(p=>{
+      const btn=element('button',p.label,'log-btn');
+      btn.type='button';
+      btn.addEventListener('click',protect(async()=>{
+        input.value=p.val;slider.value=p.val;dirty.delete(input.id);
+        await command('set',{setting:spec[0],value:String(p.val/spec[2])},input.id);
+      }));
+      presetRow.append(btn);
+      presetButtons.push({btn,val:p.val});
+    });
+
+    slider.addEventListener('change',protect(async()=>{
+      input.value=slider.value;dirty.delete(input.id);
+      await command('set',{setting:spec[0],value:String(Number(slider.value)/spec[2])},input.id);
+    }));
+    slider.addEventListener('input',()=>{input.value=slider.value;});
+
+    button.addEventListener('click',protect(async()=>{
+      slider.value=input.value;dirty.delete(input.id);
+      await command('set',{setting:spec[0],value:String(Number(input.value)/spec[2])},input.id);
+    }));
+
+    input.addEventListener('keydown',protect(async event=>{
+      if(event.key==='Enter'){
+        event.preventDefault();slider.value=input.value;dirty.delete(input.id);
+        await command('set',{setting:spec[0],value:String(Number(input.value)/spec[2])},input.id);
+      }
+    }));
+
+    label.append(title,readback);
+    card.append(label,sliderRow,presetRow);
+    $('quickGains').append(card);
+    gainElements.push({input,slider,button,readback,presetButtons});
   });
   cycleSpecs.forEach(([name,initial])=>{const button=element('button',initial);button.addEventListener('click',protect(()=>cycleControl(name)));$('functions').append(button);cycleElements.push({name,button});});
   functionSpecs.forEach(spec=>{const button=element('button',spec[1]);button.addEventListener('click',protect(()=>{const item=setting(spec[0]);return command('set',{setting:spec[0],value:item.value==='0'?'1':'0'});}));$('functions').append(button);functionElements.push(button);});
@@ -182,7 +234,29 @@ function render(next) {
     if(index===3&&valid)note='ALC reference scale';if(index===0&&valid)note=raw+' dB relative to S9';
     const elements=meterElements[index];setText(elements.output,valid?format(raw):'--');setText(elements.note,note);elements.fill.style.width=(valid?Math.max(0,Math.min(1,proportion(raw)))*100:0)+'%';elements.output.style.color=index===2&&raw>=3&&valid?'var(--red)':index===2&&raw>=2&&valid?'var(--amber)':'var(--mint)';
   });
-  gainSpecs.forEach(([id,label,scale],index)=>{const item=setting(id),elements=gainElements[index];editAcknowledged(elements.input.id,item?.revision||0);if(item?.valid){const raw=Number(item.value)*scale;value(elements.input.id,scale===100?Math.round(raw):raw);setText(elements.readback,'Radio: '+(scale===100?Math.round(raw):raw)+(index===2?' W':index===5?' Hz':' %'));}else{value(elements.input.id,'');setText(elements.readback,'Radio: --');}elements.input.disabled=elements.button.disabled=!live||!item?.valid||!item.writable;});
+  gainSpecs.forEach(([id,label,scale],index)=>{
+    const item=setting(id),elements=gainElements[index];
+    editAcknowledged(elements.input.id,item?.revision||0);
+    if(item?.valid){
+      const raw=Number(item.value)*scale;
+      const roundedVal=scale===100?Math.round(raw):raw;
+      value(elements.input.id,roundedVal);
+      if(elements.slider&&document.activeElement!==elements.slider)elements.slider.value=roundedVal;
+      setText(elements.readback,'Radio: '+roundedVal+(index===2?' W':index===5?' Hz':' %'));
+      elements.presetButtons?.forEach(p=>{
+        p.btn.classList.toggle('active',Math.abs(p.val-roundedVal)<0.5);
+      });
+    }else{
+      value(elements.input.id,'');
+      if(elements.slider)elements.slider.value=0;
+      setText(elements.readback,'Radio: --');
+      elements.presetButtons?.forEach(p=>p.btn.classList.remove('active'));
+    }
+    const disabled=!live||!item?.valid||!item.writable;
+    elements.input.disabled=elements.button.disabled=disabled;
+    if(elements.slider)elements.slider.disabled=disabled;
+    elements.presetButtons?.forEach(p=>{p.btn.disabled=disabled;});
+  });
   setText($('gainVfo'),'RF power / meters: shared · Gains: '+state.settingsVfo);
   cycleElements.forEach(({name,button})=>{const current=cycleControlState(name);setText(button,current.label);button.disabled=!live||!current.enabled;button.classList.toggle('selected',current.selected);});
   functionSpecs.forEach(([id],index)=>{const item=setting(id),button=functionElements[index];button.disabled=!live||!item?.valid||!item.writable;button.classList.toggle('selected',!!item?.valid&&item.value!=='0');});
@@ -379,6 +453,9 @@ function setup(){
   $('openConnection')?.addEventListener('click',()=>$('connectionDialog').showModal());
   $('closeConnection')?.addEventListener('click',()=>$('connectionDialog').close());
   $('connectionDialog')?.addEventListener('click',event=>{if(event.target===$('connectionDialog'))$('connectionDialog').close();});
+  $('openRxTxModal')?.addEventListener('click',()=>$('rxTxDialog').showModal());
+  $('closeRxTx')?.addEventListener('click',()=>$('rxTxDialog').close());
+  $('rxTxDialog')?.addEventListener('click',event=>{if(event.target===$('rxTxDialog'))$('rxTxDialog').close();});
   updateStickyNavigation();
   if(window.ResizeObserver){stickyOffsetsObserver=new ResizeObserver(updateStickyNavigation);stickyOffsetsObserver.observe(document.querySelector('.topbar'));stickyOffsetsObserver.observe($('notice'));}
   stickyNoticeObserver=new MutationObserver(updateStickyNavigation);stickyNoticeObserver.observe($('notice'),{childList:true,characterData:true,subtree:true});window.addEventListener('resize',updateStickyNavigation);

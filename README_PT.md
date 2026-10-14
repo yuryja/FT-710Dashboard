@@ -5,7 +5,7 @@
 
 ---
 
-🌐 **Languages / Idiomas / Langues / Línguas / Lingue**:  
+**Languages / Idiomas / Langues / Línguas / Lingue**:  
 [English](README_EN.md) | [Español](README_ES.md) | [Français](README_FR.md) | [Português](README_PT.md) | [Italiano](README_IT.md)
 
 ---
@@ -16,7 +16,7 @@
 
 ---
 
-## 🌟 Recursos no macOS
+## Recursos no macOS
 
 * **Compilação Nativa Apple Silicon & Intel**: Código C++20 otimizado para macOS (`arm64` e `x86_64`) com Apple Clang.
 * **Controle CAT Completo**: Controle bidirecional de VFO A e B, modos de operação, filtros, ganhos de RF/AF, medidores de TX/RX, DNR, NB e ajustes do Yaesu FT-710 via Hamlib 4.7.2.
@@ -29,7 +29,7 @@
 
 ---
 
-## 🚀 Instalação e Compilação no macOS
+## Instalação e Compilação no macOS
 
 ### 1. Pré-requisitos (Homebrew)
 Instale as dependências necessárias através do Homebrew:
@@ -48,7 +48,7 @@ O binário executável gerado estará em: `build-mac/FT710Dashboard-macOS`.
 
 ---
 
-## 📡 Uso e Operação
+## Uso e Operação
 
 ### Modo Demonstração (Sem rádio físico)
 Para explorar a interface e testar recursos sem conectar o transceptor:
@@ -79,7 +79,7 @@ O sistema detectará automaticamente a porta serial. Para especificar uma porta 
 
 ---
 
-## 📱 Acesso Web e Áudio no iPhone / iPad
+## Acesso Web e Áudio no iPhone / iPad
 
 1. Ao iniciar o servidor, abra no Safari: `http://localhost:8888/setup` (ou substitua `localhost` pelo endereço IP local do seu Mac).
 2. Baixe o perfil de configuração e instale-o no iOS (**Ajustes &rarr; Perfil Baixado &rarr; Instalar**).
@@ -88,7 +88,7 @@ O sistema detectará automaticamente a porta serial. Para especificar uma porta 
 
 ---
 
-## ⚖️ Licença e Atribuição
+## Licença e Atribuição
 
 Este projeto é distribuído sob a licença **Apache License 2.0**.
 Em conformidade com a Seção 4(d) da licença:

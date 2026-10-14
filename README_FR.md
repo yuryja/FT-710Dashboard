@@ -5,7 +5,7 @@
 
 ---
 
-🌐 **Languages / Idiomas / Langues / Línguas / Lingue**:  
+**Languages / Idiomas / Langues / Línguas / Lingue**:  
 [English](README_EN.md) | [Español](README_ES.md) | [Français](README_FR.md) | [Português](README_PT.md) | [Italiano](README_IT.md)
 
 ---
@@ -16,7 +16,7 @@
 
 ---
 
-## 🌟 Fonctionnalités sous macOS
+## Fonctionnalités sous macOS
 
 * **Compilation Native Apple Silicon & Intel** : Code C++20 optimisé pour macOS (`arm64` et `x86_64`) avec Apple Clang.
 * **Contrôle CAT Intégral** : Contrôle bidirectionnel des VFO A et B, modes opératoires, filtres, gains RF/AF, vu-mètres de transmission/réception, DNR, NB et paramètres du Yaesu FT-710 via Hamlib 4.7.2.
@@ -29,7 +29,7 @@
 
 ---
 
-## 🚀 Installation et Compilation sous macOS
+## Installation et Compilation sous macOS
 
 ### 1. Prérequis (Homebrew)
 Installez les dépendances nécessaires via Homebrew :
@@ -48,7 +48,7 @@ L'exécutable généré sera disponible à l'emplacement : `build-mac/FT710Dashb
 
 ---
 
-## 📡 Utilisation et Exécution
+## Utilisation et Exécution
 
 ### Mode Démo (Sans émetteur-récepteur connecté)
 Pour explorer l'interface et tester le système sans brancher le transmetteur :
@@ -79,7 +79,7 @@ Le système détectera automatiquement le port série. Pour spécifier un port o
 
 ---
 
-## 📱 Accès Web et Audio Téléphonique sur iPhone / iPad
+## Accès Web et Audio Téléphonique sur iPhone / iPad
 
 1. Lors du démarrage du serveur, ouvrez dans Safari : `http://localhost:8888/setup` (ou remplacez `localhost` par l'adresse IP locale de votre Mac).
 2. Téléchargez le profil de configuration et installez-le dans iOS (**Réglages &rarr; Profil téléchargé &rarr; Installer**).
@@ -88,7 +88,7 @@ Le système détectera automatiquement le port série. Pour spécifier un port o
 
 ---
 
-## ⚖️ Licence et Attribution
+## Licence et Attribution
 
 Ce projet est distribué sous licence **Apache License 2.0**.
 Conformément à la section 4(d) de la licence :

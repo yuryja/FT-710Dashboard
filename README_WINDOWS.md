@@ -1,7 +1,7 @@
 # FT-710 Dashboard — Remote Control for Yaesu FT-710
 
 > [!NOTE]
-> 🍏 **macOS Native Port by Yury Jajitzky (YY3BIG)**: For the Apple Silicon and Intel macOS version, guides, and documentation in multiple languages, visit:  
+> **macOS Native Port by Yury Jajitzky (YY3BIG)**: For the Apple Silicon and Intel macOS version, guides, and documentation in multiple languages, visit:  
 > [English](README_EN.md) | [Español](README_ES.md) | [Français](README_FR.md) | [Português](README_PT.md) | [Italiano](README_IT.md)
 
 A native Windows C++20 application for **local and remote control of the Yaesu FT-710**. Connect the radio to a Windows station PC by USB, then use the desktop GUI or control the same radio remotely from a phone or browser through the app's authenticated HTTPS interface. Tune frequency and VFO, change mode and radio settings, use PTT, monitor meters, and access audio/RF scopes without connecting the client device to the radio's USB port. The station PC and app must remain running and connected to the radio. Version **2.0.5** also provides two-way phone audio, with a certificate setup page for Safari and a desktop passcode editor. The Windows release ZIP bundles the required **Hamlib, libusb and threading runtime DLLs**, with their licences and notices. **FTDI DLLs for RF capture are downloaded separately.** The application dynamically uses Hamlib 4.7.2 and the Yaesu FT-710 driver (model 1049).

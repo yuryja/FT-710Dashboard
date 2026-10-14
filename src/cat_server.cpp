@@ -1,5 +1,7 @@
 #include "cat_server.hpp"
+#if defined(_WIN32)
 #include <ws2tcpip.h>
+#endif
 #include <algorithm>
 #include <chrono>
 #include <cctype>
@@ -9,7 +11,7 @@
 
 namespace {
 using namespace std::chrono_literals;
-bool sendAll(SOCKET socket, const std::string& message) {
+bool sendAll(socket_t socket, const std::string& message) {
     std::size_t sent = 0;
     while (sent < message.size()) {
         int n = send(socket, message.data() + sent, static_cast<int>(message.size() - sent), 0);
@@ -78,22 +80,29 @@ CatServer::~CatServer() { stop(); }
 void CatServer::start(unsigned port, std::uint64_t generation) {
     stop();
     if (!port || port > 65535) throw std::invalid_argument("CAT TCP port must be 1 to 65535.");
+#if defined(_WIN32)
     WSADATA data{};
     if (WSAStartup(MAKEWORD(2, 2), &data) != 0) throw std::runtime_error("Could not initialize Windows networking.");
     winsock_ = true;
+#endif
     listener_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#if defined(_WIN32)
     BOOL exclusive = TRUE;
     setsockopt(listener_, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, reinterpret_cast<const char*>(&exclusive), sizeof exclusive);
+#else
+    int reuse = 1;
+    setsockopt(listener_, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&reuse), sizeof reuse);
+#endif
     sockaddr_in address{};
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    address.sin_port = htons(static_cast<u_short>(port));
+    address.sin_port = htons(static_cast<uint16_t>(port));
     if (listener_ == INVALID_SOCKET || bind(listener_, reinterpret_cast<sockaddr*>(&address), sizeof address) == SOCKET_ERROR ||
         listen(listener_, 16) == SOCKET_ERROR) {
-        int error = WSAGetLastError();
+        int error = socket_error_code();
         stop();
         throw std::runtime_error("Cannot share CAT on 127.0.0.1:" + std::to_string(port) +
-            (error == WSAEADDRINUSE || error == WSAEACCES ? ". Port is in use; stop the process using it or choose another port." : ". Winsock error " + std::to_string(error)));
+            (error == EADDRINUSE || error == EACCES ? ". Port is in use; stop the process using it or choose another port." : ". Socket error " + std::to_string(error)));
     }
     port_ = port;
     generation_ = generation;
@@ -114,21 +123,30 @@ void CatServer::stop() {
     for (auto& client : sessions_) if (client->thread.joinable()) client->thread.join();
     sessions_.clear();
     clients_ = 0;
+#if defined(_WIN32)
     if (winsock_) { WSACleanup(); winsock_ = false; }
+#endif
     if (wasRunning) log_("CAT sharing stopped; clients disconnected.");
 }
 void CatServer::acceptLoop() {
     while (running_) {
         fd_set readable; FD_ZERO(&readable); FD_SET(listener_, &readable);
         timeval timeout{0, 250000};
+#if defined(_WIN32)
         int ready = select(0, &readable, nullptr, nullptr, &timeout);
+#else
+        int ready = select(listener_ + 1, &readable, nullptr, nullptr, &timeout);
+#endif
         if (ready > 0 && running_) {
-            SOCKET socket = accept(listener_, nullptr, nullptr);
+            socket_t socket = accept(listener_, nullptr, nullptr);
             if (socket != INVALID_SOCKET) {
-                DWORD sendTimeout = 2000, receiveTimeout = 500;
-                setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<char*>(&sendTimeout), sizeof sendTimeout);
-                setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<char*>(&receiveTimeout), sizeof receiveTimeout);
+                set_socket_timeout(socket, SO_SNDTIMEO, 2000);
+                set_socket_timeout(socket, SO_RCVTIMEO, 500);
+#if defined(_WIN32)
                 BOOL noDelay = TRUE;
+#else
+                int noDelay = 1;
+#endif
                 setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&noDelay), sizeof noDelay);
                 std::lock_guard lock(mutex_);
                 if (clients_ >= 16) { sendAll(socket, "RPRT -21\n"); closesocket(socket); }
@@ -157,7 +175,7 @@ void CatServer::serve(Client& client) {
     while (running_ && connected) {
         char data[1024];
         int n = recv(client.socket, data, sizeof data, 0);
-        if (n == SOCKET_ERROR && WSAGetLastError() == WSAETIMEDOUT) continue;
+        if (n == SOCKET_ERROR && is_socket_timeout(socket_error_code())) continue;
         if (n <= 0) break;
         buffer.append(data, n);
         while (connected && running_) {

@@ -37,7 +37,7 @@ public:
     std::string fingerprint() const { return credentials_ ? credentials_->fingerprint : ""; }
 private:
     struct Client {
-        SOCKET socket = INVALID_SOCKET;
+        socket_t socket = INVALID_SOCKET;
         std::uint64_t id = 0;
         std::string peer;
         std::thread thread;
@@ -45,7 +45,7 @@ private:
     };
     Handler handler_;
     Log log_;
-    SOCKET listener_ = INVALID_SOCKET;
+    socket_t listener_ = INVALID_SOCKET;
     bool winsock_ = false;
     std::atomic<bool> running_{false};
     std::atomic<unsigned> clients_{0};
@@ -53,11 +53,11 @@ private:
     std::thread acceptThread_;
     std::mutex mutex_, stateMutex_, loginMutex_;
     std::vector<std::unique_ptr<Client>> sessions_;
-    std::map<std::string, ULONGLONG> tokens_, attempts_;
+    std::map<std::string, std::uint64_t> tokens_, attempts_;
     std::string accessCode_, state_ = "{\"type\":\"state\"}", spectrum_, rfSpectrum_;
     std::unique_ptr<Credentials> credentials_;
     std::uint64_t revision_ = 0, urgentRevision_ = 0, spectrumRevision_ = 0, rfSpectrumRevision_ = 0, nextClient_ = 1;
-    ULONGLONG spectrumTick_ = 0, rfSpectrumTick_ = 0;
+    std::uint64_t spectrumTick_ = 0, rfSpectrumTick_ = 0;
     void acceptLoop();
     void serve(Client& client);
     bool authenticated(const std::string& cookie);

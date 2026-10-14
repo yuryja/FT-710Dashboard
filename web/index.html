@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#0b1119"><title>FT-710 · M0NXD</title>
+  <meta name="theme-color" content="#0b1119"><title>FT-710 · YY3BIG</title>
   <link rel="stylesheet" href="/app.css"><script src="/control-core.js" defer></script><script src="/audio-playback.js" defer></script><script src="/app.js" defer></script>
 </head>
 <body>
-<header class="topbar"><div><strong>FT-710 <span>/ M0NXD</span></strong><small id="connectionStatus">Station control</small></div><div class="header-actions"><time id="clock"></time><div id="mobilePttBar" class="mobile-ptt-bar" hidden><span id="mobileTxStatus" aria-live="polite">Waiting for station</span><button id="ptt" class="ptt" disabled>PTT on</button></div><button id="powerOn" data-action="powerOn" disabled>Power on</button><button id="powerOff" data-action="powerOff" disabled>Power off</button></div></header>
+<header class="topbar"><div><strong>FT-710 <span>/ YY3BIG</span></strong><small id="connectionStatus">Station control (macOS)</small></div><div class="header-actions"><time id="clock"></time><div id="mobilePttBar" class="mobile-ptt-bar" hidden><span id="mobileTxStatus" aria-live="polite">Waiting for station</span><button id="ptt" class="ptt" disabled>PTT on</button></div><button id="powerOn" data-action="powerOn" disabled>Power on</button><button id="powerOff" data-action="powerOff" disabled>Power off</button></div></header>
 <div id="notice" role="status" aria-live="polite"></div>
 <section id="login" class="login panel"><div class="eyebrow">STATION ACCESS</div><h1>Your radio, wherever you listen.</h1><p>Enter the access code from <b>Web: 8888</b> in the FT-710 Dashboard application.</p><form id="loginForm"><label>Access code<input id="accessCode" autocomplete="current-password" type="password" spellcheck="false" required></label><button class="primary">Connect to station</button></form><p id="loginError" class="muted"></p><p class="muted">HTTPS enables phone microphone audio. First visit? <a href="/setup">Install and trust the station certificate</a>.</p></section>
 <main id="app" hidden>
@@ -34,7 +34,7 @@
 <section class="panel audio-recovery"><div class="section-heading"><h3>Phone audio &amp; station options</h3><button id="resumeAudio" hidden>Resume audio</button></div><label class="inline"><input type="checkbox" id="stableAudio" checked> Keep a stable microphone/playback session (where supported)</label><label class="inline"><input type="checkbox" id="unattended"> Keep browser receive audio running when Windows locks or RDP disconnects</label><p class="muted">PTT is released when the Windows session ends. Returning to this page never automatically starts transmission. The phone still controls its speaker or headset.</p></section>
 <p id="rfApplyStatus" class="muted" role="status"></p>
 <details class="panel station-diagnostics"><summary>Connection &amp; audio diagnostics</summary><pre id="diagnosticText">Waiting for station</pre></details>
-<footer><span id="footerStatus">Waiting for station</span><button id="logout">Sign out</button></footer>
+<footer><span id="footerStatus">Waiting for station</span><span class="muted" style="margin-left: 1rem; font-size: 0.85em;">FT-710 Dashboard for macOS by <b>Yury Jajitzky (YY3BIG)</b> &middot; Based on M0NXD &middot; <a href="/disclaimer" target="_blank" style="color: #64b5f6; text-decoration: underline;">Disclaimer</a> &middot; <a href="/notice" target="_blank" style="color: #64b5f6; text-decoration: underline;">Notice</a></span><button id="logout">Sign out</button></footer>
 </main>
 <dialog id="settingDialog"><form id="settingForm"><div class="section-heading"><h2 id="settingTitle"></h2><button type="button" id="closeSetting">Close</button></div><p id="settingDescription" class="muted"></p><p id="settingReadback"></p><label>New value<input id="settingValue" spellcheck="false"><select id="settingChoices" hidden></select></label><p id="settingRange" class="muted"></p><button class="primary">Apply to radio</button></form></dialog>
 </body></html>

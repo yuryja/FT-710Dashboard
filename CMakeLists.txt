@@ -1,149 +1,148 @@
 cmake_minimum_required(VERSION 3.24)
-project(FT710Dashboard VERSION 2.0.5 LANGUAGES C CXX RC)
+project(FT710Dashboard VERSION 2.0.5 LANGUAGES C CXX)
 include(CTest)
-
-if(NOT WIN32)
-  message(FATAL_ERROR "This application uses the native Windows GUI. Build on Windows with MinGW-w64.")
-endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(HAMLIB_ROOT "${CMAKE_SOURCE_DIR}/vendor/hamlib-w64-4.7.2" CACHE PATH "Hamlib Windows SDK directory")
-find_path(HAMLIB_INCLUDE_DIR hamlib/rig.h HINTS "${HAMLIB_ROOT}/include" REQUIRED NO_DEFAULT_PATH)
-find_library(HAMLIB_LIBRARY NAMES hamlib libhamlib.dll.a HINTS "${HAMLIB_ROOT}/lib/gcc" REQUIRED NO_DEFAULT_PATH)
 
-set(PORTAUDIO_ROOT "${CMAKE_SOURCE_DIR}/vendor/portaudio-19.7.0" CACHE PATH "Pinned PortAudio source directory")
-if(NOT EXISTS "${PORTAUDIO_ROOT}/include/portaudio.h")
-  message(FATAL_ERROR "PortAudio source is missing. Run scripts/build.ps1 to obtain the pinned dependency.")
-endif()
-function(configure_audio_driver)
-  set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
-  set(PA_BUILD_SHARED OFF CACHE BOOL "" FORCE)
-  set(PA_BUILD_STATIC ON CACHE BOOL "" FORCE)
-  set(PA_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
-  set(PA_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-  set(PA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-  set(PA_USE_WASAPI ON CACHE BOOL "" FORCE)
-  set(PA_USE_WDMKS ON CACHE BOOL "" FORCE)
-  set(PA_USE_DS OFF CACHE BOOL "" FORCE)
-  set(PA_USE_WMME OFF CACHE BOOL "" FORCE)
-  set(PA_USE_ASIO OFF CACHE BOOL "" FORCE)
-  add_subdirectory("${PORTAUDIO_ROOT}" "${CMAKE_BINARY_DIR}/portaudio" EXCLUDE_FROM_ALL)
-  # Compile the pinned KS driver through a small adapter that exposes its
-  # filter path/pin identity. Device indices are never persisted as mappings.
-  get_target_property(audio_sources portaudio_static SOURCES)
-  list(FILTER audio_sources EXCLUDE REGEX "(^|/)pa_win_wdmks\\.c$")
-  set_property(TARGET portaudio_static PROPERTY SOURCES ${audio_sources})
-  target_sources(portaudio_static PRIVATE "${CMAKE_SOURCE_DIR}/src/portaudio_wdmks.c")
-  target_include_directories(portaudio_static PRIVATE "${PORTAUDIO_ROOT}/src/hostapi/wdmks")
-  set_source_files_properties("${CMAKE_SOURCE_DIR}/src/portaudio_wdmks.c" PROPERTIES COMPILE_DEFINITIONS "UNICODE;_UNICODE")
-endfunction()
-configure_audio_driver()
+if(APPLE)
+  message(STATUS "Configuring FT-710 Dashboard for macOS (arm64 / x86_64)")
 
-configure_file(src/app.rc.in "${CMAKE_BINARY_DIR}/app.rc" @ONLY)
-set(WEB_ASSETS "${CMAKE_SOURCE_DIR}/web/index.html" "${CMAKE_SOURCE_DIR}/web/app.css" "${CMAKE_SOURCE_DIR}/web/app.js" "${CMAKE_SOURCE_DIR}/web/control-core.js" "${CMAKE_SOURCE_DIR}/web/audio-worklet.js" "${CMAKE_SOURCE_DIR}/web/audio-playback.js")
-set_source_files_properties("${CMAKE_BINARY_DIR}/app.rc" PROPERTIES OBJECT_DEPENDS "${WEB_ASSETS}")
-set(DASHBOARD_SOURCES src/radio.cpp src/rigctl_protocol.cpp src/cat_server.cpp src/audio.cpp src/audio_direct.cpp src/audio_scope.cpp src/scope_view.cpp src/browser_audio.cpp src/web_tls.cpp src/web_server.cpp src/dashboard.cpp src/dashboard_web.cpp)
-list(APPEND DASHBOARD_SOURCES src/rf_scope.cpp)
-add_executable(FT710Dashboard WIN32 src/main.cpp ${DASHBOARD_SOURCES} "${CMAKE_BINARY_DIR}/app.rc")
-target_include_directories(FT710Dashboard PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_SOURCE_DIR}/src>" "$<$<COMPILE_LANGUAGE:CXX>:${HAMLIB_INCLUDE_DIR}>" "$<$<COMPILE_LANGUAGE:CXX>:${PORTAUDIO_ROOT}/include>")
-target_compile_definitions(FT710Dashboard PRIVATE UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0A00)
-target_link_libraries(FT710Dashboard PRIVATE "${HAMLIB_LIBRARY}" "$<LINK_ONLY:portaudio_static>" ws2_32 comctl32 dwmapi gdiplus comdlg32 shell32 advapi32 uxtheme ole32 uuid avrt wtsapi32 secur32 crypt32 bcrypt iphlpapi)
-if(MINGW)
-  target_compile_options(FT710Dashboard PRIVATE -Wall -Wextra -Wpedantic)
-  target_link_options(FT710Dashboard PRIVATE -municode -static-libgcc -static-libstdc++)
-endif()
-file(GLOB HAMLIB_DLLS "${HAMLIB_ROOT}/bin/*.dll")
-if(MINGW)
-  # Static libstdc++ still imports winpthreads. Ship the runtime belonging to
-  # this compiler, since older Hamlib SDK runtimes lack clock_gettime64.
-  get_filename_component(COMPILER_BIN "${CMAKE_CXX_COMPILER}" DIRECTORY)
-  foreach(RUNTIME_NAME libwinpthread-1.dll libgcc_s_seh-1.dll)
-    find_file(COMPILER_${RUNTIME_NAME} NAMES "${RUNTIME_NAME}" HINTS "${COMPILER_BIN}" REQUIRED NO_DEFAULT_PATH)
-    list(FILTER HAMLIB_DLLS EXCLUDE REGEX "/${RUNTIME_NAME}$")
-    list(APPEND HAMLIB_DLLS "${COMPILER_${RUNTIME_NAME}}")
-  endforeach()
-endif()
-foreach(DLL IN LISTS HAMLIB_DLLS)
-  add_custom_command(TARGET FT710Dashboard POST_BUILD COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${DLL}" "$<TARGET_FILE_DIR:FT710Dashboard>")
-endforeach()
-set(FTDI_RUNTIME_DIR "${CMAKE_SOURCE_DIR}/runtime/ftdi" CACHE PATH "Directory containing the FTDI x64 runtime DLLs")
-set(FTDI_RUNTIME_DLLS)
-foreach(FTDI_DLL IN ITEMS FTD2XX.dll LibFT4222.dll)
-  set(FTDI_RUNTIME_DLL "${FTDI_RUNTIME_DIR}/${FTDI_DLL}")
-  if(NOT EXISTS "${FTDI_RUNTIME_DLL}")
-    message(STATUS "Optional ${FTDI_DLL} not staged; obtain it from FTDI to use RF capture at runtime.")
-    continue()
+  execute_process(COMMAND brew --prefix hamlib OUTPUT_VARIABLE HAMLIB_PREFIX OUTPUT_STRIP_TRAILING_WHITESPACE)
+  execute_process(COMMAND brew --prefix portaudio OUTPUT_VARIABLE PORTAUDIO_PREFIX OUTPUT_STRIP_TRAILING_WHITESPACE)
+  execute_process(COMMAND brew --prefix openssl@3 OUTPUT_VARIABLE OPENSSL_PREFIX OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+  find_path(HAMLIB_INCLUDE_DIR hamlib/rig.h HINTS "${HAMLIB_PREFIX}/include" REQUIRED)
+  find_library(HAMLIB_LIBRARY NAMES hamlib HINTS "${HAMLIB_PREFIX}/lib" REQUIRED)
+
+  find_path(PORTAUDIO_INCLUDE_DIR portaudio.h HINTS "${PORTAUDIO_PREFIX}/include" REQUIRED)
+  find_library(PORTAUDIO_LIBRARY NAMES portaudio HINTS "${PORTAUDIO_PREFIX}/lib" REQUIRED)
+
+  find_path(OPENSSL_INCLUDE_DIR openssl/ssl.h HINTS "${OPENSSL_PREFIX}/include" REQUIRED)
+  find_library(OPENSSL_SSL_LIBRARY NAMES ssl HINTS "${OPENSSL_PREFIX}/lib" REQUIRED)
+  find_library(OPENSSL_CRYPTO_LIBRARY NAMES crypto HINTS "${OPENSSL_PREFIX}/lib" REQUIRED)
+
+  find_library(COREAUDIO_FRAMEWORK CoreAudio REQUIRED)
+  find_library(AUDIOTOOLBOX_FRAMEWORK AudioToolbox REQUIRED)
+  find_library(COREFOUNDATION_FRAMEWORK CoreFoundation REQUIRED)
+
+  set(MAC_SOURCES
+    src/main_mac.cpp
+    src/controller_mac.cpp
+    src/radio.cpp
+    src/rigctl_protocol.cpp
+    src/cat_server.cpp
+    src/audio_mac.cpp
+    src/audio_scope.cpp
+    src/browser_audio.cpp
+    src/rf_scope_mac.cpp
+    src/web_tls_openssl.cpp
+    src/web_server.cpp
+    src/web_resources.cpp
+  )
+
+  add_executable(FT710Dashboard-macOS ${MAC_SOURCES})
+  target_include_directories(FT710Dashboard-macOS PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${HAMLIB_INCLUDE_DIR}
+    ${PORTAUDIO_INCLUDE_DIR}
+    ${OPENSSL_INCLUDE_DIR}
+  )
+  target_link_libraries(FT710Dashboard-macOS PRIVATE
+    ${HAMLIB_LIBRARY}
+    ${PORTAUDIO_LIBRARY}
+    ${OPENSSL_SSL_LIBRARY}
+    ${OPENSSL_CRYPTO_LIBRARY}
+    ${COREAUDIO_FRAMEWORK}
+    ${AUDIOTOOLBOX_FRAMEWORK}
+    ${COREFOUNDATION_FRAMEWORK}
+  )
+  target_compile_options(FT710Dashboard-macOS PRIVATE -Wall -Wextra)
+
+  # Copy web assets to target directory
+  add_custom_command(TARGET FT710Dashboard-macOS POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/web $<TARGET_FILE_DIR:FT710Dashboard-macOS>/web
+  )
+
+elseif(WIN32)
+  enable_language(RC)
+
+  set(HAMLIB_ROOT "${CMAKE_SOURCE_DIR}/vendor/hamlib-w64-4.7.2" CACHE PATH "Hamlib Windows SDK directory")
+  find_path(HAMLIB_INCLUDE_DIR hamlib/rig.h HINTS "${HAMLIB_ROOT}/include" REQUIRED NO_DEFAULT_PATH)
+  find_library(HAMLIB_LIBRARY NAMES hamlib libhamlib.dll.a HINTS "${HAMLIB_ROOT}/lib/gcc" REQUIRED NO_DEFAULT_PATH)
+
+  set(PORTAUDIO_ROOT "${CMAKE_SOURCE_DIR}/vendor/portaudio-19.7.0" CACHE PATH "Pinned PortAudio source directory")
+  if(NOT EXISTS "${PORTAUDIO_ROOT}/include/portaudio.h")
+    message(FATAL_ERROR "PortAudio source is missing. Run scripts/build.ps1 to obtain the pinned dependency.")
   endif()
-  list(APPEND FTDI_RUNTIME_DLLS "${FTDI_RUNTIME_DLL}")
-  add_custom_command(TARGET FT710Dashboard POST_BUILD
-    COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${FTDI_RUNTIME_DLL}" "$<TARGET_FILE_DIR:FT710Dashboard>")
-endforeach()
-install(TARGETS FT710Dashboard RUNTIME DESTINATION .)
-install(FILES ${HAMLIB_DLLS} DESTINATION .)
-install(FILES ${FTDI_RUNTIME_DLLS} DESTINATION .)
-install(FILES README.md DESTINATION .)
-install(FILES scripts/check-runtime.ps1 DESTINATION .)
-install(FILES "${HAMLIB_ROOT}/COPYING.LIB.txt" "${HAMLIB_ROOT}/LICENSE.txt" "${HAMLIB_ROOT}/AUTHORS.txt" DESTINATION licenses/hamlib)
-install(FILES "${PORTAUDIO_ROOT}/LICENSE.txt" DESTINATION licenses/portaudio)
+  function(configure_audio_driver)
+    set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+    set(PA_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+    set(PA_BUILD_STATIC ON CACHE BOOL "" FORCE)
+    set(PA_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
+    set(PA_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(PA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(PA_USE_WASAPI ON CACHE BOOL "" FORCE)
+    set(PA_USE_WDMKS ON CACHE BOOL "" FORCE)
+    set(PA_USE_DS OFF CACHE BOOL "" FORCE)
+    set(PA_USE_WMME OFF CACHE BOOL "" FORCE)
+    set(PA_USE_ASIO OFF CACHE BOOL "" FORCE)
+    add_subdirectory("${PORTAUDIO_ROOT}" "${CMAKE_BINARY_DIR}/portaudio" EXCLUDE_FROM_ALL)
+    get_target_property(audio_sources portaudio_static SOURCES)
+    list(FILTER audio_sources EXCLUDE REGEX "(^|/)pa_win_wdmks\\.c$")
+    set_property(TARGET portaudio_static PROPERTY SOURCES ${audio_sources})
+    target_sources(portaudio_static PRIVATE "${CMAKE_SOURCE_DIR}/src/portaudio_wdmks.c")
+    target_include_directories(portaudio_static PRIVATE "${PORTAUDIO_ROOT}/src/hostapi/wdmks")
+    set_source_files_properties("${CMAKE_SOURCE_DIR}/src/portaudio_wdmks.c" PROPERTIES COMPILE_DEFINITIONS "UNICODE;_UNICODE")
+  endfunction()
+  configure_audio_driver()
 
-option(BUILD_RADIO_CHECKS "Build the offline FT-710 CAT protocol checks" OFF)
-if(BUILD_RADIO_CHECKS)
-  add_executable(RadioChecks tests/radio_checks.cpp src/radio.cpp src/rigctl_protocol.cpp src/cat_server.cpp)
-  target_include_directories(RadioChecks PRIVATE src "${HAMLIB_INCLUDE_DIR}")
-  target_compile_definitions(RadioChecks PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0A00)
-  target_link_libraries(RadioChecks PRIVATE "${HAMLIB_LIBRARY}" ws2_32)
-  target_compile_options(RadioChecks PRIVATE -Wall -Wextra -Wpedantic)
-  target_link_options(RadioChecks PRIVATE -static-libgcc -static-libstdc++)
-  add_test(NAME RadioChecks COMMAND RadioChecks)
-  add_executable(ReleaseChecks tests/release_checks.cpp)
-  target_include_directories(ReleaseChecks PRIVATE src "${HAMLIB_INCLUDE_DIR}")
-  target_compile_definitions(ReleaseChecks PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0A00)
-  target_link_libraries(ReleaseChecks PRIVATE "${HAMLIB_LIBRARY}" ws2_32)
-  target_link_options(ReleaseChecks PRIVATE -static-libgcc -static-libstdc++)
-  add_test(NAME ReleaseChecks COMMAND ReleaseChecks)
-endif()
-
-option(BUILD_SCOPE_CAPTURE_TOOL "Build the optional one-frame FT-710 scope diagnostic utility" OFF)
-if(BUILD_SCOPE_CAPTURE_TOOL)
-  add_executable(FT710ScopeCapture tools/ft710_scope_capture.cpp)
-  target_compile_features(FT710ScopeCapture PRIVATE cxx_std_17)
-  target_compile_definitions(FT710ScopeCapture PRIVATE UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN)
+  configure_file(src/app.rc.in "${CMAKE_BINARY_DIR}/app.rc" @ONLY)
+  set(WEB_ASSETS "${CMAKE_SOURCE_DIR}/web/index.html" "${CMAKE_SOURCE_DIR}/web/app.css" "${CMAKE_SOURCE_DIR}/web/app.js" "${CMAKE_SOURCE_DIR}/web/control-core.js" "${CMAKE_SOURCE_DIR}/web/audio-worklet.js" "${CMAKE_SOURCE_DIR}/web/audio-playback.js")
+  set_source_files_properties("${CMAKE_BINARY_DIR}/app.rc" PROPERTIES OBJECT_DEPENDS "${WEB_ASSETS}")
+  set(DASHBOARD_SOURCES src/radio.cpp src/rigctl_protocol.cpp src/cat_server.cpp src/audio.cpp src/audio_direct.cpp src/audio_scope.cpp src/scope_view.cpp src/browser_audio.cpp src/web_tls.cpp src/web_server.cpp src/dashboard.cpp src/dashboard_web.cpp)
+  list(APPEND DASHBOARD_SOURCES src/rf_scope.cpp)
+  add_executable(FT710Dashboard WIN32 src/main.cpp ${DASHBOARD_SOURCES} "${CMAKE_BINARY_DIR}/app.rc")
+  target_include_directories(FT710Dashboard PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_SOURCE_DIR}/src>" "$<$<COMPILE_LANGUAGE:CXX>:${HAMLIB_INCLUDE_DIR}>" "$<$<COMPILE_LANGUAGE:CXX>:${PORTAUDIO_ROOT}/include>")
+  target_compile_definitions(FT710Dashboard PRIVATE UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0A00)
+  target_link_libraries(FT710Dashboard PRIVATE "${HAMLIB_LIBRARY}" "$<LINK_ONLY:portaudio_static>" ws2_32 comctl32 dwmapi gdiplus comdlg32 shell32 advapi32 uxtheme ole32 uuid avrt wtsapi32 secur32 crypt32 bcrypt iphlpapi)
   if(MINGW)
-    target_compile_options(FT710ScopeCapture PRIVATE -Wall -Wextra -Wpedantic)
-    target_link_options(FT710ScopeCapture PRIVATE -static-libgcc -static-libstdc++)
+    target_compile_options(FT710Dashboard PRIVATE -Wall -Wextra -Wpedantic)
+    target_link_options(FT710Dashboard PRIVATE -municode -static-libgcc -static-libstdc++)
   endif()
-  foreach(FTDI_DLL IN LISTS FTDI_RUNTIME_DLLS)
-    add_custom_command(TARGET FT710ScopeCapture POST_BUILD
-      COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${FTDI_DLL}" "$<TARGET_FILE_DIR:FT710ScopeCapture>")
-  endforeach()
-endif()
-
-option(BUILD_GUI_CHECKS "Build offline dashboard layout and refresh checks" OFF)
-if(BUILD_GUI_CHECKS)
-  add_executable(GuiChecks tests/gui_checks.cpp ${DASHBOARD_SOURCES} "${CMAKE_BINARY_DIR}/app.rc")
-  target_include_directories(GuiChecks PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_SOURCE_DIR}/src>" "$<$<COMPILE_LANGUAGE:CXX>:${HAMLIB_INCLUDE_DIR}>" "$<$<COMPILE_LANGUAGE:CXX>:${PORTAUDIO_ROOT}/include>")
-  target_compile_definitions(GuiChecks PRIVATE UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0A00)
-  target_link_libraries(GuiChecks PRIVATE "${HAMLIB_LIBRARY}" "$<LINK_ONLY:portaudio_static>" ws2_32 comctl32 dwmapi gdiplus comdlg32 shell32 advapi32 uxtheme ole32 uuid avrt wtsapi32 secur32 crypt32 bcrypt iphlpapi)
-  target_compile_options(GuiChecks PRIVATE -Wall -Wextra -Wpedantic)
-  target_link_options(GuiChecks PRIVATE -static-libgcc -static-libstdc++)
-  add_test(NAME GuiChecks COMMAND GuiChecks)
+  file(GLOB HAMLIB_DLLS "${HAMLIB_ROOT}/bin/*.dll")
+  if(MINGW)
+    get_filename_component(COMPILER_BIN "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    foreach(RUNTIME_NAME libwinpthread-1.dll libgcc_s_seh-1.dll)
+      find_file(COMPILER_${RUNTIME_NAME} NAMES "${RUNTIME_NAME}" HINTS "${COMPILER_BIN}" REQUIRED NO_DEFAULT_PATH)
+      list(FILTER HAMLIB_DLLS EXCLUDE REGEX "/${RUNTIME_NAME}$")
+      list(APPEND HAMLIB_DLLS "${COMPILER_${RUNTIME_NAME}}")
+    endforeach()
+  endif()
   foreach(DLL IN LISTS HAMLIB_DLLS)
-    add_custom_command(TARGET GuiChecks POST_BUILD COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${DLL}" "$<TARGET_FILE_DIR:GuiChecks>")
+    add_custom_command(TARGET FT710Dashboard POST_BUILD COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${DLL}" "$<TARGET_FILE_DIR:FT710Dashboard>")
   endforeach()
-endif()
-find_program(NODE_EXECUTABLE node)
-if(BUILD_TESTING AND NODE_EXECUTABLE)
-  add_test(NAME BrowserChecks COMMAND "${NODE_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tests/browser_checks.cjs")
-  add_executable(WebDeltaChecks tests/web_delta_checks.cpp)
-  target_include_directories(WebDeltaChecks PRIVATE src)
-  target_compile_options(WebDeltaChecks PRIVATE -Wall -Wextra -Wpedantic)
-  target_link_options(WebDeltaChecks PRIVATE -static-libgcc -static-libstdc++)
-  add_test(NAME WebDeltaChecks COMMAND "${NODE_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tests/web_delta_checks.cjs" "$<TARGET_FILE:WebDeltaChecks>")
-  add_executable(WebServerFixture tests/web_server_fixture.cpp src/web_server.cpp src/web_tls.cpp src/browser_audio.cpp "${CMAKE_BINARY_DIR}/app.rc")
-  target_include_directories(WebServerFixture PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_SOURCE_DIR}/src>")
-  target_compile_definitions(WebServerFixture PRIVATE UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0A00)
-  target_link_libraries(WebServerFixture PRIVATE ws2_32 secur32 crypt32 bcrypt iphlpapi)
-  target_link_options(WebServerFixture PRIVATE -static-libgcc -static-libstdc++)
-  add_test(NAME WebServerChecks COMMAND "${NODE_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tests/web_server_checks.cjs" "$<TARGET_FILE:WebServerFixture>" "${CMAKE_BINARY_DIR}/web-fixture")
+  set(FTDI_RUNTIME_DIR "${CMAKE_SOURCE_DIR}/runtime/ftdi" CACHE PATH "Directory containing the FTDI x64 runtime DLLs")
+  set(FTDI_RUNTIME_DLLS)
+  foreach(FTDI_DLL IN ITEMS FTD2XX.dll LibFT4222.dll)
+    set(FTDI_RUNTIME_DLL "${FTDI_RUNTIME_DIR}/${FTDI_DLL}")
+    if(NOT EXISTS "${FTDI_RUNTIME_DLL}")
+      message(STATUS "Optional ${FTDI_DLL} not staged; obtain it from FTDI to use RF capture at runtime.")
+      continue()
+    endif()
+    list(APPEND FTDI_RUNTIME_DLLS "${FTDI_RUNTIME_DLL}")
+    add_custom_command(TARGET FT710Dashboard POST_BUILD
+      COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${FTDI_RUNTIME_DLL}" "$<TARGET_FILE_DIR:FT710Dashboard>")
+  endforeach()
+  install(TARGETS FT710Dashboard RUNTIME DESTINATION .)
+  install(FILES ${HAMLIB_DLLS} DESTINATION .)
+  install(FILES ${FTDI_RUNTIME_DLLS} DESTINATION .)
+  install(FILES README.md DESTINATION .)
+  install(FILES scripts/check-runtime.ps1 DESTINATION .)
+  install(FILES "${HAMLIB_ROOT}/COPYING.LIB.txt" "${HAMLIB_ROOT}/LICENSE.txt" "${HAMLIB_ROOT}/AUTHORS.txt" DESTINATION licenses/hamlib)
+  install(FILES "${PORTAUDIO_ROOT}/LICENSE.txt" DESTINATION licenses/portaudio)
+
+else()
+  message(FATAL_ERROR "Unsupported platform. Build on macOS or Windows.")
 endif()

@@ -1,10 +1,13 @@
 #pragma once
-#include <windows.h>
+#include "net_compat.hpp"
 #include <atomic>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
+#if !defined(_WIN32)
+#include <condition_variable>
+#endif
 #include "audio_scope.hpp"
 #include "browser_audio.hpp"
 
@@ -34,7 +37,13 @@ public:
     Spectrum& spectrum() { return spectrum_; }
     void receivedAudio(bool enabled) { receiveTap_ = enabled; spectrum_.enable(enabled); }
 private:
+#if defined(_WIN32)
     HANDLE stopEvent_ = nullptr;
+#else
+    std::atomic<bool> stopWanted_{false};
+    std::condition_variable stopCv_;
+    std::mutex stopMutex_;
+#endif
     std::thread thread_;
     std::atomic<bool> gate_{false};
     std::atomic<unsigned> gateEpoch_{0};

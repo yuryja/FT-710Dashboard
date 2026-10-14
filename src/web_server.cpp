@@ -1,12 +1,16 @@
 #include "web_server.hpp"
 #include "browser_audio.hpp"
 #include "web_delta.hpp"
+#include "web_resources.hpp"
+#if defined(_WIN32)
 #include <ws2tcpip.h>
+#endif
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cctype>
 #include <cstring>
+#include <fstream>
 #include <sstream>
 #include <stdexcept>
 #include <string_view>
@@ -41,11 +45,6 @@ bool same(const std::string& a, const std::string& b) {
     unsigned difference = static_cast<unsigned>(a.size() ^ b.size());
     for (unsigned i = 0; i < std::max(a.size(), b.size()); ++i) difference |= (i < a.size() ? static_cast<unsigned char>(a[i]) : 0) ^ (i < b.size() ? static_cast<unsigned char>(b[i]) : 0);
     return difference == 0;
-}
-std::string resource(unsigned id) {
-    auto module = GetModuleHandleW(nullptr); auto item = FindResourceW(module, MAKEINTRESOURCEW(id), RT_RCDATA);
-    if (!item) throw std::runtime_error("Embedded web asset is missing");
-    auto loaded = LoadResource(module, item); return {static_cast<const char*>(LockResource(loaded)), SizeofResource(module, item)};
 }
 std::string response(unsigned status, const std::string& type, const std::string& body, const std::string& extra = "", const std::string& host = "") {
     return "HTTP/1.1 " + std::to_string(status) + (status == 200 ? " OK" : status == 401 ? " Unauthorized" : status == 403 ? " Forbidden" : status == 429 ? " Too Many Requests" : " Error") +
@@ -102,25 +101,40 @@ Server::Server(Handler handler, Log log) : handler_(std::move(handler)), log_(st
 Server::~Server() { stop(); }
 void Server::start(const std::wstring& certificateFolder, const std::string& accessCode, bool loopbackOnly) {
     stop(); setAccessCode(accessCode);
+#if defined(_WIN32)
     WSADATA data{}; if (WSAStartup(MAKEWORD(2,2), &data)) throw std::runtime_error("Could not initialize web networking"); winsock_ = true;
+#endif
     try {
         credentials_ = std::make_unique<Credentials>(); credentials_->create(certificateFolder);
         listener_ = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-        DWORD dual = 0; BOOL exclusive = TRUE;
+        int dual = 0;
         bool dualStack = listener_ != INVALID_SOCKET && setsockopt(listener_, IPPROTO_IPV6, IPV6_V6ONLY, reinterpret_cast<char*>(&dual), sizeof dual) == 0;
         if (!dualStack) {
             if (listener_ != INVALID_SOCKET) closesocket(listener_);
             listener_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-            if (listener_ == INVALID_SOCKET) throw std::runtime_error("Cannot create web socket (Winsock " + std::to_string(WSAGetLastError()) + ")");
+            if (listener_ == INVALID_SOCKET) throw std::runtime_error("Cannot create web socket (Socket error " + std::to_string(socket_error_code()) + ")");
         }
+#if defined(_WIN32)
+        BOOL exclusive = TRUE;
         setsockopt(listener_, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, reinterpret_cast<char*>(&exclusive), sizeof exclusive);
+#else
+        int reuse = 1;
+        setsockopt(listener_, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*>(&reuse), sizeof reuse);
+#endif
         sockaddr_in6 address6{}; address6.sin6_family = AF_INET6; address6.sin6_addr = loopbackOnly ? in6addr_loopback : in6addr_any; address6.sin6_port = htons(8888);
         sockaddr_in address4{}; address4.sin_family = AF_INET; address4.sin_addr.s_addr = htonl(loopbackOnly ? INADDR_LOOPBACK : INADDR_ANY); address4.sin_port = htons(8888);
         if (loopbackOnly && dualStack) address6.sin6_addr = in6addr_any;
         // An IPv4 loopback socket avoids dual-stack wildcard exposure in fixtures.
-        if (loopbackOnly && dualStack) { closesocket(listener_);listener_=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);dualStack=false;setsockopt(listener_,SOL_SOCKET,SO_EXCLUSIVEADDRUSE,reinterpret_cast<char*>(&exclusive),sizeof exclusive); }
+        if (loopbackOnly && dualStack) {
+            closesocket(listener_); listener_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); dualStack = false;
+#if defined(_WIN32)
+            setsockopt(listener_, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, reinterpret_cast<char*>(&exclusive), sizeof exclusive);
+#else
+            setsockopt(listener_, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*>(&reuse), sizeof reuse);
+#endif
+        }
         auto* address = dualStack ? reinterpret_cast<sockaddr*>(&address6) : reinterpret_cast<sockaddr*>(&address4);
-        if (bind(listener_, address, dualStack ? sizeof address6 : sizeof address4) || listen(listener_, 32)) throw std::runtime_error("Cannot listen on port 8888 (Winsock " + std::to_string(WSAGetLastError()) + "). Another dashboard/server may be using it.");
+        if (bind(listener_, address, dualStack ? sizeof address6 : sizeof address4) || listen(listener_, 32)) throw std::runtime_error("Cannot listen on port 8888 (Socket error " + std::to_string(socket_error_code()) + "). Another dashboard/server may be using it.");
         running_ = true; acceptThread_ = std::thread([this] { acceptLoop(); });
         log_(std::string("Web dashboard listening on all ") + (dualStack ? "IPv4/IPv6" : "IPv4") + " addresses, HTTPS port 8888. HTTP serves certificate setup only. Use the Web: 8888 button for access details.");
     } catch (...) { stop(); throw; }
@@ -134,7 +148,9 @@ void Server::stop() {
     sessions_.clear(); clients_ = 0;
     { std::lock_guard lock(loginMutex_); tokens_.clear(); attempts_.clear(); }
     credentials_.reset();
+#if defined(_WIN32)
     if (winsock_) { WSACleanup(); winsock_ = false; }
+#endif
 }
 void Server::setAccessCode(const std::string& accessCode) {
     std::lock_guard lock(loginMutex_);
@@ -172,11 +188,20 @@ bool Server::authenticated(const std::string& cookie) {
 void Server::acceptLoop() {
     while (running_) {
         fd_set readable; FD_ZERO(&readable); FD_SET(listener_, &readable); timeval timeout{0,250000};
-        if (select(0, &readable, nullptr, nullptr, &timeout) > 0 && running_) {
-            sockaddr_storage peer{}; int size = sizeof peer; SOCKET socket = accept(listener_, reinterpret_cast<sockaddr*>(&peer), &size);
+#if defined(_WIN32)
+        int ready = select(0, &readable, nullptr, nullptr, &timeout);
+#else
+        int ready = select(listener_ + 1, &readable, nullptr, nullptr, &timeout);
+#endif
+        if (ready > 0 && running_) {
+            sockaddr_storage peer{}; socklen_t size = sizeof peer; socket_t socket = accept(listener_, reinterpret_cast<sockaddr*>(&peer), &size);
             if (socket != INVALID_SOCKET) {
-                DWORD timeoutMs = 1000; BOOL noDelay = TRUE;
-                setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<char*>(&timeoutMs), sizeof timeoutMs);
+                set_socket_timeout(socket, SO_SNDTIMEO, 1000);
+#if defined(_WIN32)
+                BOOL noDelay = TRUE;
+#else
+                int noDelay = 1;
+#endif
                 setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&noDelay), sizeof noDelay);
                 std::lock_guard lock(mutex_);
                 if (sessions_.size() >= 32) closesocket(socket);
@@ -217,7 +242,15 @@ void Server::serve(Client& client) {
         else if (method == "GET" && path == "/station.mobileconfig")
             stream.send(response(200,"application/x-apple-aspen-config",credentials_->appleProfile,"Content-Disposition: attachment; filename=ft710-station.mobileconfig\r\n"));
         else if (method == "GET" && path == "/setup") stream.send(response(200,"text/html; charset=utf-8",setupPage(headers["host"],credentials_->fingerprint)));
-        else if (!stream.secure()) {
+        else if (method == "GET" && path == "/disclaimer") {
+            std::ifstream f("DISCLAIMER.md");
+            std::string disc = f ? std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>()) : "See DISCLAIMER.md in repository.";
+            stream.send(response(200, "text/plain; charset=utf-8", disc));
+        } else if (method == "GET" && path == "/notice") {
+            std::ifstream f("NOTICE");
+            std::string notc = f ? std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>()) : "See NOTICE in repository.";
+            stream.send(response(200, "text/plain; charset=utf-8", notc));
+        } else if (!stream.secure()) {
             if (method == "GET" && (path == "/" || path == "/index.html")) stream.send(response(200,"text/html; charset=utf-8",setupPage(headers["host"],credentials_->fingerprint)));
             else if (method == "GET" && path == "/app.css") stream.send(response(200,"text/css; charset=utf-8",resource(202)));
             else stream.send(response(403,"application/json","{\"error\":\"Open the HTTPS dashboard after certificate setup\"}"));
@@ -246,8 +279,8 @@ void Server::serve(Client& client) {
             { std::lock_guard lock(loginMutex_); tokens_.erase(cookieToken(headers["cookie"])); }
             stream.send(response(200, "application/json", "{\"ok\":true}", "Set-Cookie: ft710_tls_session=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Strict\r\n"));
         } else if (method == "GET" && path == "/ws" && origin && authenticated(headers["cookie"]) && lower(headers["upgrade"]) == "websocket" && lower(headers["connection"]).find("upgrade") != std::string::npos && headers["sec-websocket-version"] == "13") {
-            DWORD decodedSize = 0; auto key = headers["sec-websocket-key"];
-            if (key.size() != 24 || !CryptStringToBinaryA(key.c_str(), key.size(), CRYPT_STRING_BASE64, nullptr, &decodedSize, nullptr, nullptr) || decodedSize != 16 || clients_ >= 8) throw std::runtime_error("Invalid WebSocket handshake");
+            auto key = headers["sec-websocket-key"];
+            if (key.size() != 24 || clients_ >= 8) throw std::runtime_error("Invalid WebSocket handshake");
             if (stream.send("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + websocketAccept(key) + "\r\n\r\n")) websocket(client, stream, body, cookieToken(headers["cookie"]));
         } else if (method == "GET" && path == "/api/state") {
             if (!authenticated(headers["cookie"])) stream.send(response(401,"application/json","{\"error\":\"Sign in first\"}"));

@@ -28,10 +28,15 @@ inline radio::Connection connection(const Fields& fields){
 struct Scope { std::string port;unsigned span=7,baud=4800;std::optional<double> level; };
 inline Scope scope(const Fields& fields,bool requirePort=false){
     Scope result;result.port=get(fields,"rfCat2Port");
-    const bool validPort=result.port.size()>=4&&result.port.size()<=15&&
-        std::toupper(static_cast<unsigned char>(result.port[0]))=='C'&&std::toupper(static_cast<unsigned char>(result.port[1]))=='O'&&
-        std::toupper(static_cast<unsigned char>(result.port[2]))=='M'&&std::all_of(result.port.begin()+3,result.port.end(),[](unsigned char c){return std::isdigit(c);});
-    if((requirePort||!result.port.empty())&&!validPort)throw std::invalid_argument("Enter the radio Standard / CAT-2 COM port, for example COM5");
+    bool validPort = false;
+    if (result.port.starts_with("/dev/")) {
+        validPort = result.port.size() >= 6 && result.port.size() <= 80;
+    } else {
+        validPort = result.port.size()>=4 && result.port.size()<=15 &&
+            std::toupper(static_cast<unsigned char>(result.port[0]))=='C' && std::toupper(static_cast<unsigned char>(result.port[1]))=='O' &&
+            std::toupper(static_cast<unsigned char>(result.port[2]))=='M' && std::all_of(result.port.begin()+3,result.port.end(),[](unsigned char c){return std::isdigit(c);});
+    }
+    if((requirePort||!result.port.empty())&&!validPort)throw std::invalid_argument("Enter the radio Standard / CAT-2 port, for example /dev/cu.usbserial-10 or COM5");
     result.span=choice(get(fields,"rfSpan"),{0,1,2,3,4,5,6,7,8,9},"RF span");
     result.baud=choice(get(fields,"rfCat2Baud"),{4800,9600,19200,38400,115200},"CAT-2 baud");
     if(fields.contains("rfWaterfallLevel")){const auto text=get(fields,"rfWaterfallLevel");std::size_t count=0;double level=std::stod(text,&count);

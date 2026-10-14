@@ -1,6 +1,6 @@
 #pragma once
 
-#include <windows.h>
+#include "net_compat.hpp"
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -20,7 +20,7 @@ struct Frame {
     std::uint32_t spanIndex = 0;
     bool frequencyValid = false;
     bool valid = false;
-    ULONGLONG acquiredAt = 0;
+    std::uint64_t acquiredAt = 0;
     std::uint64_t generation = 0;
     bool fresh() const { return valid && acquiredAt && GetTickCount64() - acquiredAt < 1000; }
 };

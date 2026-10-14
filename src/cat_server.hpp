@@ -1,5 +1,5 @@
 #pragma once
-#include <winsock2.h>
+#include "net_compat.hpp"
 #include "cat.hpp"
 #include <functional>
 #include <mutex>
@@ -19,14 +19,14 @@ public:
     unsigned port() const { return port_; }
 private:
     struct Client {
-        SOCKET socket = INVALID_SOCKET;
+        socket_t socket = INVALID_SOCKET;
         std::uint64_t id = 0;
         std::thread thread;
         std::atomic<bool> done{false};
     };
     Handler handler_;
     Log log_;
-    SOCKET listener_ = INVALID_SOCKET;
+    socket_t listener_ = INVALID_SOCKET;
     bool winsock_ = false;
     std::atomic<bool> running_{false};
     std::atomic<unsigned> clients_{0};

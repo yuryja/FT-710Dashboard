@@ -5,6 +5,11 @@
 
 ---
 
+🌐 **Languages / Idiomas / Langues / Línguas / Lingue**:  
+[English](README_EN.md) | [Español](README_ES.md) | [Français](README_FR.md) | [Português](README_PT.md) | [Italiano](README_IT.md)
+
+---
+
 > [!CAUTION]
 > **AVISO DE SOFTWARE EXPERIMENTAL PARA RADIOAFICIONADOS**  
 > Este software es estrictamente experimental y se distribuye bajo los principios del Servicio de Radioaficionados. El **Operador de Control** es el único y exclusivo responsable legal del funcionamiento técnico, potencia de RF, límites de frecuencia, relación de onda estacionaria (ROE/SWR) y transmisiones de PTT de su estación. Para pruebas iniciales, utilice siempre una **carga ficticia (Dummy Load)** de 50 Ω. Consulte el documento legal completo en [DISCLAIMER.md](DISCLAIMER.md).

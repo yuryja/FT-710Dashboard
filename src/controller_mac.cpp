@@ -70,7 +70,7 @@ void ControllerMac::initialize(bool demo, const std::string& serialPort, int bau
 
     const char* home = std::getenv("HOME");
     std::filesystem::path certDir = home ? (std::filesystem::path(home) / ".config" / "ft710") : ".";
-    std::wstring certDirW(certDir.string().begin(), certDir.string().end());
+    std::wstring certDirW = certDir.wstring();
     webServer_->start(certDirW, webAccessCode_);
 
     connectRadio();

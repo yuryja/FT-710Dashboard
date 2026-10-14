@@ -101,24 +101,32 @@ int main(int argc, char* argv[]) {
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
 
-    app::ControllerMac controller;
-    gController = &controller;
+    try {
+        app::ControllerMac controller;
+        gController = &controller;
 
-    controller.initialize(demo, port, baud, passcode);
+        controller.initialize(demo, port, baud, passcode);
 
-    std::cout << "\n--------------------------------------------------------------------------------\n"
-              << "[+] Web Dashboard is running on port 8888\n"
-              << "    Local URL:   https://localhost:8888/\n"
-              << "    Setup URL:   http://localhost:8888/setup (for Safari/iPhone cert setup)\n"
-              << "    CAT Sharing: 127.0.0.1:4532 (NET rigctl for WSJT-X, fldigi, etc.)\n"
-              << "--------------------------------------------------------------------------------\n"
-              << "Press Ctrl+C to stop the station dashboard.\n\n";
+        std::cout << "\n--------------------------------------------------------------------------------\n"
+                  << "[+] Web Dashboard is running on port 8888\n"
+                  << "    Local URL:   https://localhost:8888/\n"
+                  << "    Setup URL:   http://localhost:8888/setup (for Safari/iPhone cert setup)\n"
+                  << "    CAT Sharing: 127.0.0.1:4532 (NET rigctl for WSJT-X, fldigi, etc.)\n"
+                  << "--------------------------------------------------------------------------------\n"
+                  << "Press Ctrl+C to stop the station dashboard.\n\n";
 
-    if (openBrowser) {
-        system("open http://localhost:8888/setup");
+        if (openBrowser) {
+            system("open http://localhost:8888/setup");
+        }
+
+        controller.run();
+    } catch (const std::exception& e) {
+        std::cerr << "\n[!] Error starting station dashboard: " << e.what() << "\n\n";
+        return 1;
+    } catch (...) {
+        std::cerr << "\n[!] Unexpected fatal error starting station dashboard.\n\n";
+        return 1;
     }
-
-    controller.run();
 
     return 0;
 }

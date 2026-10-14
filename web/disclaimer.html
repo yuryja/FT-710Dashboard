@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FT-710 · Safety Notice & Legal Disclaimer</title>
+  <link rel="stylesheet" href="/wizard.css">
+  <style>
+    .disclaimer-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      border-radius: 14px;
+      padding: 1.75rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    .disclaimer-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .disclaimer-header h2 {
+      font-size: 1.25rem;
+      color: #fff;
+      margin: 0;
+    }
+    .disclaimer-card p, .disclaimer-card li {
+      color: var(--text-secondary);
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+    .disclaimer-card ul {
+      margin: 0.5rem 0 0 1.2rem;
+      padding: 0;
+    }
+    .disclaimer-card li {
+      margin-bottom: 0.4rem;
+    }
+    .disclaimer-banner {
+      background: rgba(255, 179, 0, 0.08);
+      border: 1px solid rgba(255, 179, 0, 0.3);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .disclaimer-banner p {
+      color: #ffca28;
+      font-size: 0.92rem;
+      line-height: 1.5;
+      margin: 0;
+    }
+    .disclaimer-footer {
+      text-align: center;
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border-glass);
+    }
+  </style>
+</head>
+<body>
+<div class="wizard-container">
+
+  <!-- Header -->
+  <header class="header-bar">
+    <div class="brand-group">
+      <div class="yaesu-badge">710</div>
+      <div>
+        <h1 id="ui-title">FT-710 Dashboard · Legal Disclaimer</h1>
+        <p class="subtitle" id="ui-subtitle">Safety Notice & Control Operator Responsibility · macOS Port by YY3BIG</p>
+      </div>
+    </div>
+    <div class="lang-selector-wrap">
+      <select id="lang-select" class="lang-select" aria-label="Language">
+        <option value="en">EN · English</option>
+        <option value="es" selected>ES · Español</option>
+        <option value="fr">FR · Français</option>
+        <option value="pt">PT · Português</option>
+        <option value="it">IT · Italiano</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- Caution Banner -->
+  <div class="disclaimer-banner">
+    <svg class="icon icon-lg icon-warning" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <div>
+      <strong id="ui-banner-title" style="color: #ffca28; display: block; margin-bottom: 0.25rem;">PLEASE READ CAREFULLY BEFORE USING THIS SOFTWARE</strong>
+      <p id="ui-banner-text">By compiling, running, or using this software, you expressly, voluntarily, and irrevocably agree to all terms, conditions, and safety notices stated herein.</p>
+    </div>
+  </div>
+
+  <!-- Section 1 -->
+  <article class="disclaimer-card">
+    <div class="disclaimer-header">
+      <svg class="icon icon-accent" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      <h2 id="ui-s1-title">1. Experimental Nature & Amateur Radio Principles</h2>
+    </div>
+    <p id="ui-s1-text">This software is an <b>experimental open-source tool</b> developed solely for educational, technical study, and radio experimentation purposes under the traditional principles of the <b>Amateur Radio Service</b> (ITU Radio Regulations, IARU guidelines, and applicable national regulatory frameworks).</p>
+  </article>
+
+  <!-- Section 2 -->
+  <article class="disclaimer-card">
+    <div class="disclaimer-header">
+      <svg class="icon icon-accent" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <h2 id="ui-s2-title">2. Sole and Exclusive Responsibility of the Control Operator</h2>
+    </div>
+    <p id="ui-s2-intro">In accordance with international telecommunications and amateur radio regulations:</p>
+    <ul id="ui-s2-list">
+      <li>The <b>Station Control Operator</b> is at all times solely and exclusively legally responsible for the technical operation, signal purity, RF power level, and safety of their station.</li>
+      <li>Verifying transmitting frequencies fall strictly within the authorized amateur allocations and license privileges.</li>
+      <li>Continuously monitoring and regulating RF output power and Standing Wave Ratio (SWR).</li>
+      <li>Actively supervising all Push-To-Talk (PTT) transmissions to prevent unintended, continuous, or unmonitored carrier activation.</li>
+      <li>Ensuring antennas, feeders, and tuning components are properly matched.</li>
+      <li>Configuring the Time-Out Timer (TOT) on the Yaesu FT-710 transceiver.</li>
+    </ul>
+  </article>
+
+  <!-- Section 3 -->
+  <article class="disclaimer-card">
+    <div class="disclaimer-header">
+      <svg class="icon icon-orange" viewBox="0 0 24 24"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <h2 id="ui-s3-title">3. Total Disclaimer of Liability for Damages (No Warranty)</h2>
+    </div>
+    <p id="ui-s3-intro">Under no circumstances and under no legal theory shall the author of this macOS port (<b>Yury Jajitzky, YY3BIG</b>), the author of the original base project (<b>M0NXD</b>), or any contributor be liable to you or any third party for:</p>
+    <ul id="ui-s3-list">
+      <li><b>Direct, indirect, special, incidental, punitive, or consequential damages</b> arising from the use or inability to use this software.</li>
+      <li><b>Damage to Radio Transceivers</b>: Damage to Yaesu FT-710 transceivers, including blown final RF power transistors (PA), low-pass filter modules, switching relays, or internal automatic antenna tuners.</li>
+      <li><b>Damage to Computer Hardware</b>: Damage to Mac USB ports, audio interfaces, FTDI/Silicon Labs bridge chips, or connected peripherals.</li>
+      <li><b>Regulatory Infractions</b>: Fines, sanctions, license suspensions, or complaints resulting from out-of-band emissions, excessive RF power, spurious emissions, or harmonics.</li>
+    </ul>
+  </article>
+
+  <!-- Section 4 -->
+  <article class="disclaimer-card">
+    <div class="disclaimer-header">
+      <svg class="icon icon-warning" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      <h2 id="ui-s4-title">4. Mandatory Safety Standards for Initial Testing</h2>
+    </div>
+    <ul id="ui-s4-list">
+      <li><b>Use of a 50 Ω Dummy Load</b>: Perform all initial tests (PTT actuation, band changing, mode selection, audio loopback) with the transceiver connected to a calibrated 50 Ω dummy load adequate for the transmitter power.</li>
+      <li><b>Supervised Operation Only</b>: NEVER operate this software unattended while transmission or CAT PTT functionality is active.</li>
+      <li><b>Emergency Disconnect</b>: Always remain in close physical proximity to the radio power switch or DC power supply disconnect.</li>
+    </ul>
+  </article>
+
+  <!-- Navigation Buttons -->
+  <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem;">
+    <a href="/setup" class="btn btn-secondary">
+      <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      <span id="ui-btn-wizard">Setup Wizard</span>
+    </a>
+    <a href="/" class="btn btn-primary">
+      <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span id="ui-btn-dashboard">Dashboard</span>
+    </a>
+    <a href="https://github.com/yuryja/FT-710Dashboard" target="_blank" rel="noreferrer" class="btn btn-secondary">
+      <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+      <span>GitHub</span>
+    </a>
+  </div>
+
+  <footer class="disclaimer-footer">
+    <p class="subtitle" style="font-size: 0.82rem; margin: 0;">
+      FT-710 Dashboard for macOS &middot; Developed by <b>Yury Jajitzky (YY3BIG)</b> &middot; Based on M0NXD &middot; Apache License 2.0
+    </p>
+  </footer>
+
+</div>
+
+<script>
+const translations = {
+  es: {
+    title: "FT-710 Dashboard · Aviso Legal y Seguridad",
+    subtitle: "Aviso de Seguridad y Responsabilidad del Operador de Control · Adaptado a macOS por YY3BIG",
+    bannerTitle: "LEA DETENIDAMENTE ANTES DE UTILIZAR ESTE SOFTWARE",
+    bannerText: "Al compilar, ejecutar o utilizar este software, usted acepta de manera expresa, voluntaria e irrevocable todos los términos, condiciones y advertencias aquí estipulados.",
+    s1Title: "1. Naturaleza Experimental y Principios de la Radioafición",
+    s1Text: "Este software es una herramienta <b>experimental de código abierto</b> desarrollada con fines estrictamente educativos, de estudio técnico y de experimentación en telecomunicaciones, bajo el espíritu tradicional del <b>Servicio de Radioaficionados</b> (Reglamento de Radiocomunicaciones de la UIT, normativas IARU y legislaciones nacionales aplicables).",
+    s2Title: "2. Responsabilidad Exclusiva e Indelegable del Operador de Control",
+    s2Intro: "De conformidad con los reglamentos internacionales de telecomunicaciones:",
+    s2List: [
+      "El <b>Operador de Control de la Estación</b> de radioaficionado es en todo momento el <b>ÚNICO Y EXCLUSIVO RESPONSABLE LEGAL</b> del funcionamiento técnico, operativo y de seguridad de su estación.",
+      "Verificar que la frecuencia de operación esté dentro de los segmentos de banda autorizados para su categoría.",
+      "Vigilar y controlar la potencia de salida de radiofrecuencia (RF) y la relación de onda estacionaria (ROE / SWR).",
+      "Monitorear activamente cualquier ciclo de transmisión (PTT) para evitar transmisiones accidentales, continuas o no deseadas.",
+      "Asegurar el correcto funcionamiento del sistema de antenas, cables coaxiales, acopladores y cargas.",
+      "Configurar en el transceptor Yaesu FT-710 los límites de tiempo de transmisión (TOT - Time-Out Timer)."
+    ],
+    s3Title: "3. Exención Total de Responsabilidad por Daños (Sin Garantía)",
+    s3Intro: "Bajo ninguna circunstancia y bajo ninguna teoría legal, el autor de esta versión (<b>Yury Jajitzky, YY3BIG</b>), el autor del proyecto base original (<b>M0NXD</b>), ni ningún colaborador serán responsables ante usted ni ante terceros por:",
+    s3List: [
+      "<b>Daños directos, indirectos, especiales, fortuitos, punitivos o consecuentes</b> derivados del uso, mal uso o imposibilidad de uso de este software.",
+      "<b>Daño a equipos de radio</b>: Daños a transceptores Yaesu FT-710, rotura o quema de transistores de potencia finales (PA), filtros pasa-bajos, relés de conmutación o sintonizadores automáticos.",
+      "<b>Daño a hardware informático</b>: Daños en puertos USB, interfaces de comunicación, chips de audio, chips FTDI o periféricos de la computadora Mac.",
+      "<b>Infracciones regulatorias</b>: Sanciones administrativas, multas, pérdida de licencias o reclamos derivados de emisiones fuera de banda, exceso de potencia o emisiones no deseadas."
+    ],
+    s4Title: "4. Normas de Seguridad Recomendadas para Pruebas",
+    s4List: [
+      "<b>Uso de Carga Ficticia (Dummy Load)</b>: Realice todas las pruebas iniciales de transmisión (PTT, cambio de bandas, sintonización) conectando el transceptor a una carga ficticia de 50 Ω adecuada a la potencia del equipo.",
+      "<b>Supervisión Continua</b>: NUNCA opere este software desatendido cuando la función de PTT o transmisión esté habilitada.",
+      "<b>Corte de Emergencia</b>: Conozca siempre el procedimiento para apagar inmediatamente el transceptor o desconectar el cable de alimentación en caso de anomalía."
+    ],
+    btnWizard: "Asistente de Configuración",
+    btnDashboard: "Panel Principal"
+  },
+  en: {
+    title: "FT-710 Dashboard · Legal Disclaimer & Safety",
+    subtitle: "Safety Notice & Control Operator Responsibility · macOS Port by YY3BIG",
+    bannerTitle: "PLEASE READ CAREFULLY BEFORE USING THIS SOFTWARE",
+    bannerText: "By compiling, running, or using this software, you expressly, voluntarily, and irrevocably agree to all terms, conditions, and safety notices stated herein.",
+    s1Title: "1. Experimental Nature & Amateur Radio Principles",
+    s1Text: "This software is an <b>experimental open-source tool</b> developed solely for educational, technical study, and radio experimentation purposes under the traditional principles of the <b>Amateur Radio Service</b> (ITU Radio Regulations, IARU guidelines, and applicable national regulatory frameworks).",
+    s2Title: "2. Sole and Exclusive Responsibility of the Control Operator",
+    s2Intro: "In accordance with international telecommunications and amateur radio regulations:",
+    s2List: [
+      "The <b>Station Control Operator</b> is at all times solely and exclusively legally responsible for the technical operation, signal purity, RF power level, and safety of their station.",
+      "Verifying transmitting frequencies fall strictly within the authorized amateur allocations and license privileges.",
+      "Continuously monitoring and regulating RF output power and Standing Wave Ratio (SWR).",
+      "Actively supervising all Push-To-Talk (PTT) transmissions to prevent unintended, continuous, or unmonitored carrier activation.",
+      "Ensuring antennas, feeders, and tuning components are properly matched.",
+      "Configuring the Time-Out Timer (TOT) on the Yaesu FT-710 transceiver."
+    ],
+    s3Title: "3. Total Disclaimer of Liability for Damages (No Warranty)",
+    s3Intro: "Under no circumstances and under no legal theory shall the author of this macOS port (<b>Yury Jajitzky, YY3BIG</b>), the author of the original base project (<b>M0NXD</b>), or any contributor be liable to you or any third party for:",
+    s3List: [
+      "<b>Direct, indirect, special, incidental, punitive, or consequential damages</b> arising from the use or inability to use this software.",
+      "<b>Damage to Radio Transceivers</b>: Damage to Yaesu FT-710 transceivers, including blown final RF power transistors (PA), low-pass filter modules, switching relays, or internal automatic antenna tuners.",
+      "<b>Damage to Computer Hardware</b>: Damage to Mac USB ports, audio interfaces, FTDI/Silicon Labs bridge chips, or connected peripherals.",
+      "<b>Regulatory Infractions</b>: Fines, sanctions, license suspensions, or complaints resulting from out-of-band emissions, excessive RF power, spurious emissions, or harmonics."
+    ],
+    s4Title: "4. Mandatory Safety Standards for Initial Testing",
+    s4List: [
+      "<b>Use of a 50 Ω Dummy Load</b>: Perform all initial tests (PTT actuation, band changing, mode selection, audio loopback) with the transceiver connected to a calibrated 50 Ω dummy load adequate for the transmitter power.",
+      "<b>Supervised Operation Only</b>: NEVER operate this software unattended while transmission or CAT PTT functionality is active.",
+      "<b>Emergency Disconnect</b>: Always remain in close physical proximity to the radio power switch or DC power supply disconnect."
+    ],
+    btnWizard: "Setup Wizard",
+    btnDashboard: "Dashboard"
+  },
+  fr: {
+    title: "FT-710 Dashboard · Avis Légal et Sécurité",
+    subtitle: "Avis de Sécurité et Responsabilité de l'Opérateur de Contrôle · Portage macOS par YY3BIG",
+    bannerTitle: "VEUILLEZ LIRE ATTENTIVEMENT AVANT D'UTILISER CE LOGICIEL",
+    bannerText: "En compilant, exécutant ou utilisant ce logiciel, vous acceptez expressément et irrévocablement toutes les conditions et tous les avertissements énoncés ci-dessous.",
+    s1Title: "1. Nature Expérimentale et Principes du Radioamateurisme",
+    s1Text: "Ce logiciel est un outil <b>open source expérimental</b> conçu exclusivement à des fins éducatives, d'analyse technique et d'expérimentation radioélectrique, conformément aux principes du <b>Service Radioamateur</b> (Règlement des radiocommunications de l'UIT, normes IARU et réglementations nationales).",
+    s2Title: "2. Responsabilité Exclusive de l'Opérateur de Contrôle",
+    s2Intro: "Conformément aux réglementations internationales :",
+    s2List: [
+      "L'<b>Opérateur de Contrôle de la Station</b> est à tout moment le <b>SEUL ET UNIQUE RESPONSABLE LÉGAL</b> du fonctionnement technique et de la sécurité de sa station.",
+      "Vérifier que la fréquence d'émission se situe dans les bandes allouées à sa classe de licence.",
+      "Surveiller en permanence la puissance d'émission RF et le rapport d'ondes stationnaires (TOS / SWR).",
+      "Superviser tout déclenchement PTT pour prévenir toute émission accidentelle ou continue.",
+      "S'assurer de la conformité des antennes et des lignes d'alimentation.",
+      "Configurer le temporisateur de transmission (TOT) sur le Yaesu FT-710."
+    ],
+    s3Title: "3. Exonération Totale de Responsabilité",
+    s3Intro: "En aucun cas l'auteur de ce portage macOS (<b>Yury Jajitzky, YY3BIG</b>), l'auteur original (<b>M0NXD</b>) ou les contributeurs ne sauraient être tenus responsables de :",
+    s3List: [
+      "Dommages directs ou indirects résultant de l'utilisation de ce logiciel.",
+      "Dommages matériels causés au Yaesu FT-710 (transistors PA, filtres, relais, coupleur d'antenne).",
+      "Dommages aux ports USB ou au matériel informatique du Mac.",
+      "Infractions administratives relatives aux émissions hors bande ou puissances non conformes."
+    ],
+    s4Title: "4. Consignes de Sécurité pour les Essais",
+    s4List: [
+      "<b>Charge Fictive 50 Ω</b>: Réaliser tous les essais initiaux de transmission sur une charge fictive 50 Ω adaptée.",
+      "<b>Supervision Continue</b>: Ne jamais laisser le logiciel fonctionner sans surveillance lorsque l'émission est active.",
+      "<b>Arrêt d'Urgence</b>: Savoir couper immédiatement l'alimentation du poste en cas d'anomalie."
+    ],
+    btnWizard: "Assistant de Configuration",
+    btnDashboard: "Tableau de Bord"
+  },
+  pt: {
+    title: "FT-710 Dashboard · Aviso Legal e Segurança",
+    subtitle: "Aviso de Segurança e Responsabilidade do Operador de Controle · Porte para macOS por YY3BIG",
+    bannerTitle: "LEIA COM ATENÇÃO ANTES DE UTILIZAR ESTE SOFTWARE",
+    bannerText: "Ao compilar, executar ou utilizar este software, você aceita de forma expressa e irrevogável todos os termos e condições aqui descritos.",
+    s1Title: "1. Natureza Experimental e Princípios do Radioamadorismo",
+    s1Text: "Este software é uma ferramenta <b>experimental de código aberto</b> desenvolvida com fins estritamente educacionais e de estudo técnico no âmbito do <b>Serviço de Radioamador</b> (Regulamento de Radiocomunicações da UIT, normativas IARU e legislação nacional).",
+    s2Title: "2. Responsabilidade Exclusiva do Operador de Controle",
+    s2Intro: "De acordo com os regulamentos de telecomunicações:",
+    s2List: [
+      "O <b>Operador de Controle da Estação</b> é em todos os momentos o <b>ÚNICO E EXCLUSIVO RESPONSÁVEL LEGAL</b> pela operação técnica e de segurança da sua estação.",
+      "Assegurar que as frequências de transmissão estejam dentro das faixas autorizadas pela sua licença.",
+      "Monitorar a potência de saída de RF e a relação de ondas estacionárias (ROE / SWR).",
+      "Acompanhar os acionamentos de PTT evitando transmissões contínuas indesejadas.",
+      "Garantir o correto casamento de antenas e cabos coaxiais.",
+      "Configurar o temporizador de transmissão (TOT) no Yaesu FT-710."
+    ],
+    s3Title: "3. Isenção Total de Responsabilidade",
+    s3Intro: "Em nenhuma hipótese o autor deste porte para macOS (<b>Yury Jajitzky, YY3BIG</b>), o autor original (<b>M0NXD</b>) ou colaboradores serão responsáveis por:",
+    s3List: [
+      "Danos diretos ou indiretos decorrentes do uso ou incapacidade de uso deste software.",
+      "Danos ao transceptor Yaesu FT-710 (transistores PA, filtros, relés, sintonizador interno).",
+      "Danos a portas USB ou periféricos do Mac.",
+      "Infrações regulatórias por emissão fora de faixa ou potência excessiva."
+    ],
+    s4Title: "4. Normas de Segurança para Testes",
+    s4List: [
+      "<b>Carga Fictícia de 50 Ω</b>: Efetue os primeiros testes de PTT e sintonia conectado a uma carga fictícia de 50 Ω.",
+      "<b>Supervisão Contínua</b>: Nunca opere o software sem supervisão com transmissão habilitada.",
+      "<b>Desconexão de Emergência</b>: Esteja sempre pronto para desligar a fonte de alimentação em caso de anomalia."
+    ],
+    btnWizard: "Assistente de Instalação",
+    btnDashboard: "Painel Principal"
+  },
+  it: {
+    title: "FT-710 Dashboard · Avviso Legale e Sicurezza",
+    subtitle: "Avviso di Sicurezza e Responsabilità dell'Operatore di Controllo · Porting macOS di YY3BIG",
+    bannerTitle: "LEGGERE ATTENTAMENTE PRIMA DI UTILIZZARE QUESTO SOFTWARE",
+    bannerText: "Compilando, eseguendo o utilizzando questo software, si accettano espressamente e irrevocabilmente tutti i termini e le condizioni qui indicati.",
+    s1Title: "1. Natura Sperimentale e Principi del Radioamatore",
+    s1Text: "Questo software è uno strumento <b>open source sperimentale</b> sviluppato per scopi educativi e di sperimentazione tecnica nell'ambito del <b>Servizio di Radioamatore</b> (Regolamento delle Radiocomunicazioni UIT, IARU e normative nazionali).",
+    s2Title: "2. Responsabilità Esclusiva dell'Operatore di Controllo",
+    s2Intro: "In conformità alle normative sulle telecomunicazioni:",
+    s2List: [
+      "L'<b>Operatore di Controllo della Stazione</b> è in ogni momento l'<b>UNICO ERETTO E RESPONSABILE LEGALE</b> del funzionamento tecnico e della sicurezza della propria stazione.",
+      "Verificare che le frequenze di trasmissione siano rigorosamente all'interno delle bande autorizzate.",
+      "Monitorare costantemente la potenza RF e il rapporto di onde stazionarie (ROS / SWR).",
+      "Supervisionare l'attivazione del PTT per prevenire trasmissioni accidentali o continue.",
+      "Assicurarsi della corretta efficienza delle antenne e delle linee coassiali.",
+      "Configurare il Time-Out Timer (TOT) sul ricetrasmettitore Yaesu FT-710."
+    ],
+    s3Title: "3. Esclusione Totale di Responsabilità",
+    s3Intro: "In nessun caso l'autore di questo porting macOS (<b>Yury Jajitzky, YY3BIG</b>), l'autore del progetto originario (<b>M0NXD</b>) o altri collaboratori saranno responsabili per:",
+    s3List: [
+      "Danni diretti o indiretti derivanti dall'uso o dall'impossibilità di usare questo software.",
+      "Danni all'apparato Yaesu FT-710 (stadio finale PA, filtri passa-basso, relè, accordatore automatico).",
+      "Danni a porte USB o hardware del Mac.",
+      "Sanzioni o contestazioni per emissioni fuori banda o spurie."
+    ],
+    s4Title: "4. Misure di Sicurezza Raccomandate",
+    s4List: [
+      "<b>Carico Fittizio da 50 Ω</b>: Condurre tutti i test preliminari collegando la radio a un carico fittizio da 50 Ω.",
+      "<b>Sorveglianza Continua</b>: Non utilizzare mai il software senza supervisione con la trasmissione abilitata.",
+      "<b>Disconnessione di Emergenza</b>: Mantenere sempre l'accesso rapido all'interruttore dell'alimentazione."
+    ],
+    btnWizard: "Procedura Guidata",
+    btnDashboard: "Pannello Principale"
+  }
+};
+
+function setLanguage(lang) {
+  const t = translations[lang] || translations.en;
+  document.getElementById("ui-title").innerText = t.title;
+  document.getElementById("ui-subtitle").innerText = t.subtitle;
+  document.getElementById("ui-banner-title").innerText = t.bannerTitle;
+  document.getElementById("ui-banner-text").innerText = t.bannerText;
+
+  document.getElementById("ui-s1-title").innerText = t.s1Title;
+  document.getElementById("ui-s1-text").innerHTML = t.s1Text;
+
+  document.getElementById("ui-s2-title").innerText = t.s2Title;
+  document.getElementById("ui-s2-intro").innerText = t.s2Intro;
+  document.getElementById("ui-s2-list").innerHTML = t.s2List.map(item => `<li>${item}</li>`).join("");
+
+  document.getElementById("ui-s3-title").innerText = t.s3Title;
+  document.getElementById("ui-s3-intro").innerHTML = t.s3Intro;
+  document.getElementById("ui-s3-list").innerHTML = t.s3List.map(item => `<li>${item}</li>`).join("");
+
+  document.getElementById("ui-s4-title").innerText = t.s4Title;
+  document.getElementById("ui-s4-list").innerHTML = t.s4List.map(item => `<li>${item}</li>`).join("");
+
+  document.getElementById("ui-btn-wizard").innerText = t.btnWizard;
+  document.getElementById("ui-btn-dashboard").innerText = t.btnDashboard;
+}
+
+document.getElementById("lang-select").addEventListener("change", (e) => {
+  setLanguage(e.target.value);
+});
+
+// Detect browser language
+const navLang = (navigator.language || "es").slice(0, 2).toLowerCase();
+const initialLang = ["en", "es", "fr", "pt", "it"].includes(navLang) ? navLang : "es";
+document.getElementById("lang-select").value = initialLang;
+setLanguage(initialLang);
+</script>
+</body>
+</html>

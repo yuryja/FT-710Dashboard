@@ -254,11 +254,15 @@ void Server::serve(Client& client) {
             stream.send(response(200,"application/pkix-cert",credentials_->certificate,"Content-Disposition: attachment; filename=ft710-web-root.cer\r\n"));
         else if (isGetOrHead && path == "/station.mobileconfig")
             stream.send(response(200,"application/x-apple-aspen-config",credentials_->appleProfile,"Content-Disposition: attachment; filename=ft710-station.mobileconfig\r\n"));
-        else if (isGetOrHead && (path == "/setup" || path == "/wizard" || path == "/wizard.html")) stream.send(response(200,"text/html; charset=utf-8",setupPage(headers["host"],credentials_->fingerprint,accessCode_)));
-        else if (isGetOrHead && path == "/disclaimer") {
-            std::ifstream f("DISCLAIMER.md");
-            std::string disc = f ? std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>()) : "See DISCLAIMER.md in repository.";
-            stream.send(response(200, "text/plain; charset=utf-8", disc));
+        else if (isGetOrHead && (path == "/disclaimer" || path == "/disclaimer.html")) {
+            std::string discHtml = resource(212);
+            if (!discHtml.empty()) {
+                stream.send(response(200, "text/html; charset=utf-8", discHtml));
+            } else {
+                std::ifstream f("DISCLAIMER.md");
+                std::string disc = f ? std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>()) : "See DISCLAIMER.md in repository.";
+                stream.send(response(200, "text/plain; charset=utf-8", disc));
+            }
         } else if (isGetOrHead && path == "/notice") {
             std::ifstream f("NOTICE");
             std::string notc = f ? std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>()) : "See NOTICE in repository.";

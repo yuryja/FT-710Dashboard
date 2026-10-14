@@ -259,4 +259,31 @@
 .multi-bar i{display:block;height:100%;width:0%;background:var(--mint);border-radius:2px;transition:width 0.08s ease-out}
 .multi-chip.warning .multi-bar i{background:#ef4444}
 
+/* Yaesu Curved Needle Meter & VFO Layout */
+.yaesu-vfo-content{display:grid;grid-template-columns:285px 1fr;align-items:center;gap:16px;margin:8px 0 12px}
+@media(max-width:960px){.yaesu-vfo-content{grid-template-columns:1fr;gap:10px}}
+.yaesu-meter-col{position:relative;background:#000000;border:1px solid #1a2233;border-radius:10px;padding:6px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 16px rgba(0,0,0,0.9)}
+.yaesu-needle-canvas{display:block;width:280px;height:115px}
+.yaesu-freq-col{display:flex;flex-direction:column;justify-content:center;min-width:0}
+.yaesu-badge-row{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.vfo-badge{display:inline-flex;align-items:center;justify-content:center;padding:3px 8px;border-radius:4px;font-weight:800;font-style:italic;font-size:12px;letter-spacing:.5px;background:#161d2a;color:#94a3b8;border:1px solid #283548}
+.vfo.active .vfo-badge{background:#0e3328;border-color:var(--mint);color:var(--mint)}
+.mode-badge-pill{display:inline-flex;align-items:center;justify-content:center;min-height:26px;padding:2px 10px;border-radius:4px;font-weight:800;font-size:13px;letter-spacing:.6px;border:none;cursor:pointer;transition:all .15s ease;color:#ffffff;box-shadow:0 2px 6px rgba(0,0,0,0.4)}
+.mode-badge-pill:hover{transform:scale(1.05);filter:brightness(1.15)}
+.mode-badge-pill.mode-lsb{background:#2563eb}
+.mode-badge-pill.mode-usb{background:#059669}
+.mode-badge-pill.mode-cw{background:#dc2626}
+.mode-badge-pill.mode-am{background:#d97706}
+.mode-badge-pill.mode-fm{background:#7c3aed}
+.mode-badge-pill.mode-data{background:#0891b2}
+.mode-badge-pill.mode-rtty{background:#4f46e5}
+.vfo-band-pill{font-size:11px;font-weight:600;color:var(--muted);background:rgba(255,255,255,0.04);border:1px solid var(--line);border-radius:4px;padding:2px 7px}
+.vfo-freq-hero{font-family:'Eurostile','Titillium Web','Orbitron',Consolas,ui-monospace,monospace;font-size:clamp(30px,3.8vw,48px);font-weight:900;font-style:italic;letter-spacing:-1px;color:#ffffff;display:block;line-height:1.1;margin:4px 0 6px;cursor:pointer;transition:all .2s ease;user-select:none;font-variant-numeric:tabular-nums}
+.vfo-freq-hero:hover{color:var(--mint);text-shadow:0 0 18px rgba(52,211,153,0.45)}
+.vfo-subline{display:flex;align-items:center;gap:12px;margin-top:2px}
+.vfo-micro-meters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto}
+.micro-stat{font-size:11px;color:#64748b;font-family:Consolas,ui-monospace,monospace}
+.micro-stat b{color:#cbd5e1;font-weight:600}
+
+
 

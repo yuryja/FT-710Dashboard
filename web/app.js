@@ -222,26 +222,38 @@ function render(next) {
   setText($('sharingStatus'),state.sharing.error||(state.sharing.running?`127.0.0.1:${state.sharing.port} · ${state.sharing.clients} Hamlib clients`:'CAT sharing inactive'));
   const curStep = Number(localStorage.getItem('step') || $('step')?.value || '100');
   const stepLabel = (curStep >= 1e6 ? (curStep/1e6)+' MHz' : curStep >= 1e3 ? (curStep/1e3)+' kHz' : curStep+' Hz') + ' step';
-  ['A','B'].forEach((name,index)=>{const vfo=state.vfos[index];setText($('freq'+name),vfo.frequencyValid?frequency(vfo.frequency):'--.---.---');setText($('mode'+name),vfo.modeValid?vfo.mode:'--');setText($('width'+name),vfo.modeValid?vfo.width+' Hz filter':'-- Hz filter');setText($('band'+name),vfo.frequencyValid?band(vfo.frequency):'Waiting for radio');const isActive=state.online&&state.activeVfo===name;$('card'+name).classList.toggle('active',isActive);if($('step'+name)){setText($('step'+name),stepLabel);$('step'+name).style.display=isActive?'inline-flex':'none';}});
+  ['A','B'].forEach((name,index)=>{
+    const vfo=state.vfos[index];
+    setText($('freq'+name),vfo.frequencyValid?frequency(vfo.frequency):'--.---.---');
+    setText($('mode'+name),vfo.modeValid?vfo.mode:'--');
+    const modeBtn=$('mode'+name);
+    if(modeBtn&&vfo.modeValid){modeBtn.className='mode-badge-pill '+getModeBadgeClass(vfo.mode);}
+    setText($('width'+name),vfo.modeValid?vfo.width+' Hz filter':'-- Hz filter');
+    setText($('band'+name),vfo.frequencyValid?band(vfo.frequency):'-- m');
+    const isActive=state.online&&state.activeVfo===name;
+    $('card'+name).classList.toggle('active',isActive);
+    if($('step'+name)){
+      setText($('step'+name),stepLabel);
+      $('step'+name).style.display=isActive?'inline-flex':'none';
+    }
+  });
   editAcknowledged('controlVfo',state.vfoRevision);value('controlVfo',state.activeVfo);const index=$('controlVfo').value==='B'?1:0,vfo=state.vfos[index];
   editAcknowledged('frequency',vfo.frequencyRevision);editAcknowledged('mode',vfo.modeRevision);editAcknowledged('width',vfo.modeRevision);
   value('frequency',vfo.frequencyValid?(vfo.frequency/1e6).toFixed(6):'');optionList($('mode'),state.modes.map(mode=>[mode,mode]),vfo.modeValid?vfo.mode:'');value('width',vfo.modeValid?vfo.width:'');
   for(const id of ['frequency','mode','width','controlVfo','up','down'])$(id).disabled=!live;
   document.querySelectorAll('[data-vfo],[data-action="swap"],[data-action="copy"]').forEach(node=>node.disabled=!live);
-  meterSpecs.forEach(([id,title,format,proportion],index)=>{
+  meterSpecs.forEach(([id,title,format,proportion],idx)=>{
     let item=setting(id),raw=Number(item?.value),valid=live&&item?.valid&&item.age<=2000&&(!item.txOnly||tx),note=item?.status||'Unavailable';
-    if(index===1&&!item){item=setting('level.RFPOWER_METER');raw=Number(item?.value)*100;valid=live&&item?.valid&&item.age<=2000&&tx;}
+    if(idx===1&&!item){item=setting('level.RFPOWER_METER');raw=Number(item?.value)*100;valid=live&&item?.valid&&item.age<=2000&&tx;}
     if(!Number.isFinite(raw))valid=false;if(item?.txOnly&&!tx)note=state.pttKnown?'TX only':'TX status unavailable';else if(item?.age>2000)note='Stale / waiting for CAT';
-    if(index===1){const power=setting('level.RFPOWER');if(power?.valid)note=(valid?'Measured · set ':'TX only · set ')+Math.round(Number(power.value)*100)+' W';}
-    if(index===3&&valid)note='ALC reference scale';if(index===0&&valid)note=raw+' dB relative to S9';
-    const elements=meterElements[index];if(elements){setText(elements.output,valid?format(raw):'--');setText(elements.note,note);elements.fill.style.width=(valid?Math.max(0,Math.min(1,proportion(raw)))*100:0)+'%';elements.output.style.color=index===2&&raw>=3&&valid?'var(--red)':index===2&&raw>=2&&valid?'var(--amber)':'var(--mint)';}
+    if(idx===1){const power=setting('level.RFPOWER');if(power?.valid)note=(valid?'Measured · set ':'TX only · set ')+Math.round(Number(power.value)*100)+' W';}
+    if(idx===3&&valid)note='ALC reference scale';if(idx===0&&valid)note=raw+' dB relative to S9';
+    const elements=meterElements[idx];if(elements){setText(elements.output,valid?format(raw):'--');setText(elements.note,note);elements.fill.style.width=(valid?Math.max(0,Math.min(1,proportion(raw)))*100:0)+'%';elements.output.style.color=idx===2&&raw>=3&&valid?'var(--red)':idx===2&&raw>=2&&valid?'var(--amber)':'var(--mint)';}
   });
 
-  // Yaesu FT-710 Style S-Meter and Multi-Meter updates for each VFO
+  // Calculate live values for Yaesu meters
   const sigItem=setting('level.STRENGTH'),sigRaw=Number(sigItem?.value),sigValid=live&&sigItem?.valid&&sigItem.age<=2000&&!tx;
   const sigProp=sigValid&&Number.isFinite(sigRaw)?Math.max(0,Math.min(1,(sigRaw+54)/114)):0;
-  const sigMain=sigValid?(sigRaw>=0?'S9'+(sigRaw>0?' +'+Math.round(sigRaw)+'dB':''):'S'+Math.max(0,Math.min(9,Math.round((sigRaw+54)/6)))):'--';
-  const sigSub=sigValid?(sigRaw>=0?'+':'')+sigRaw.toFixed(1)+' dB rel S9':'No signal';
 
   let pwrItem=setting('level.RFPOWER_METER_WATTS')||setting('level.RFPOWER_METER'),pwrRaw=Number(pwrItem?.value);
   if(pwrItem?.id==='level.RFPOWER_METER')pwrRaw*=100;
@@ -250,53 +262,31 @@ function render(next) {
   const pwrVal=pwrValid?pwrRaw.toFixed(1)+' W':'--';
 
   const swrItem=setting('level.SWR'),swrRaw=Number(swrItem?.value),swrValid=live&&swrItem?.valid&&swrItem.age<=2000&&tx;
-  const swrProp=swrValid&&Number.isFinite(swrRaw)?Math.max(0,Math.min(1,(swrRaw-1)/3)):0;
   const swrVal=swrValid?swrRaw.toFixed(1):'--';
 
   const alcItem=setting('level.ALC'),alcRaw=Number(alcItem?.value),alcValid=live&&alcItem?.valid&&alcItem.age<=2000&&tx;
-  const alcProp=alcValid&&Number.isFinite(alcRaw)?Math.max(0,Math.min(1,alcRaw)):0;
   const alcVal=alcValid?(alcRaw*100).toFixed(0)+'%':'--';
 
   const compItem=setting('level.COMP_METER'),compRaw=Number(compItem?.value),compValid=live&&compItem?.valid&&compItem.age<=2000&&tx;
-  const compProp=compValid&&Number.isFinite(compRaw)?Math.max(0,Math.min(1,compRaw/20)):0;
   const compVal=compValid?compRaw.toFixed(1)+' dB':'--';
 
   const idItem=setting('level.ID_METER'),idRaw=Number(idItem?.value),idValid=live&&idItem?.valid&&idItem.age<=2000&&tx;
-  const idProp=idValid&&Number.isFinite(idRaw)?Math.max(0,Math.min(1,idRaw/25)):0;
   const idVal=idValid?idRaw.toFixed(1)+' A':'--';
 
   ['A','B'].forEach(name=>{
     const isActive=state.online&&state.activeVfo===name;
-    if(!$('smeter'+name))return;
-    if(tx&&isActive){
-      setText($('smeterBadge'+name),'PO');
-      $('smeterBadge'+name).className='smeter-mode-badge tx';
-      setText($('smeterVal'+name),pwrValid?pwrVal:'TX');
-      const setPwr=setting('level.RFPOWER');
-      setText($('smeterSub'+name),setPwr?.valid?'TX · Set '+Math.round(Number(setPwr.value)*100)+' W':'Transmitting');
-      $('smeterFill'+name).style.width=(pwrProp*100)+'%';
-      $('smeterPeak'+name).style.left=(pwrProp*100)+'%';
+    if(isActive){
+      needleState[name].target=tx?pwrProp:sigProp;
+      needleState[name].mode=tx?'PO':'S';
     }else{
-      setText($('smeterBadge'+name),'S');
-      $('smeterBadge'+name).className='smeter-mode-badge rx';
-      if(isActive&&live){
-        setText($('smeterVal'+name),sigValid?sigMain:'S0');
-        setText($('smeterSub'+name),sigSub);
-        $('smeterFill'+name).style.width=(sigProp*100)+'%';
-        $('smeterPeak'+name).style.left=(sigProp*100)+'%';
-      }else{
-        setText($('smeterVal'+name),'--');
-        setText($('smeterSub'+name),'Standby');
-        $('smeterFill'+name).style.width='0%';
-        $('smeterPeak'+name).style.left='0%';
-      }
+      needleState[name].target=0;
+      needleState[name].mode='S';
     }
-    setText($('valPo'+name),pwrVal);$('barPo'+name).style.width=(pwrProp*100)+'%';
-    setText($('valSwr'+name),swrVal);$('barSwr'+name).style.width=(swrProp*100)+'%';
-    $('chipSwr'+name).classList.toggle('warning',swrValid&&swrRaw>=2.0);
-    setText($('valAlc'+name),alcVal);$('barAlc'+name).style.width=(alcProp*100)+'%';
-    setText($('valComp'+name),compVal);$('barComp'+name).style.width=(compProp*100)+'%';
-    setText($('valId'+name),idVal);$('barId'+name).style.width=(idProp*100)+'%';
+    setText($('microPo'+name),'PO '+(pwrValid?pwrVal:'--'));
+    setText($('microSwr'+name),'SWR '+(swrValid?swrVal:'--'));
+    setText($('microAlc'+name),'ALC '+(alcValid?alcVal:'--'));
+    setText($('microComp'+name),'COMP '+(compValid?compVal:'--'));
+    setText($('microId'+name),'ID '+(idValid?idVal:'--'));
   });
   gainSpecs.forEach(([id,label,scale],index)=>{
     const item=setting(id),elements=gainElements[index];
@@ -549,6 +539,191 @@ function setup(){
   $('dial').addEventListener('pointerdown',event=>{if(!state?.online)return;drag=event.pointerId;lastX=event.clientX;motion=0;$('dial').setPointerCapture(drag);});$('dial').addEventListener('pointermove',event=>{if(drag!==event.pointerId)return;motion+=event.clientX-lastX;lastX=event.clientX;const count=Math.trunc(motion/12);if(count){motion-=count*12;queue(count);}});for(const name of ['pointerup','pointercancel','lostpointercapture'])$('dial').addEventListener(name,()=>{drag=undefined;tuningQueue.flush().catch(error=>notify(error.message));});
   $('dial').addEventListener('keydown',protect(event=>{if(['ArrowLeft','ArrowDown','ArrowRight','ArrowUp','PageUp','PageDown'].includes(event.key)){event.preventDefault();return tune(event.key==='PageUp'?10:event.key==='PageDown'?-10:event.key==='ArrowLeft'||event.key==='ArrowDown'?-1:1);}}));
   for(const id of ['dial','freqA','freqB'])$(id).addEventListener('wheel',event=>{event.preventDefault();queue(event.deltaY<0?1:-1,id==='dial'?$('controlVfo').value:id==='freqB'?'B':'A');},{passive:false});
+
+  function getModeBadgeClass(mode){
+    const m=String(mode||'').toUpperCase();
+    if(m==='LSB')return 'mode-lsb';
+    if(m==='USB')return 'mode-usb';
+    if(m.startsWith('CW'))return 'mode-cw';
+    if(m.startsWith('AM'))return 'mode-am';
+    if(m.startsWith('FM'))return 'mode-fm';
+    if(m.startsWith('DATA')||m.startsWith('PKT'))return 'mode-data';
+    if(m.startsWith('RTTY')||m.startsWith('PSK'))return 'mode-rtty';
+    return 'mode-usb';
+  }
+
+  const needleState={
+    A:{current:0,target:0,velocity:0,mode:'S'},
+    B:{current:0,target:0,velocity:0,mode:'S'}
+  };
+
+  function drawNeedleMeter(id,prop,mode){
+    const canvas=$('needleCanvas'+id);
+    if(!canvas)return;
+    const dpr=window.devicePixelRatio||1;
+    const logicalW=280, logicalH=115;
+    if(canvas.width!==Math.round(logicalW*dpr)||canvas.height!==Math.round(logicalH*dpr)){
+      canvas.width=Math.round(logicalW*dpr);
+      canvas.height=Math.round(logicalH*dpr);
+    }
+    const ctx=canvas.getContext('2d');
+    ctx.save();
+    ctx.scale(dpr,dpr);
+    ctx.clearRect(0,0,logicalW,logicalH);
+
+    const cx=140, cy=180, rTop=150, rBot=120;
+    const aStart=-34*Math.PI/180, aS9=4*Math.PI/180, aEnd=32*Math.PI/180;
+
+    // Top S arc (White)
+    ctx.beginPath();
+    ctx.arc(cx,cy,rTop,-Math.PI/2+aStart,-Math.PI/2+aS9);
+    ctx.strokeStyle='#ffffff';
+    ctx.lineWidth=2;
+    ctx.stroke();
+
+    // Over S9 arc (+dB Blue)
+    ctx.beginPath();
+    ctx.arc(cx,cy,rTop,-Math.PI/2+aS9,-Math.PI/2+aEnd);
+    ctx.strokeStyle='#3b82f6';
+    ctx.lineWidth=2.5;
+    ctx.stroke();
+
+    // Red boundary tick at S9
+    const s9Cos=Math.cos(-Math.PI/2+aS9), s9Sin=Math.sin(-Math.PI/2+aS9);
+    ctx.beginPath();
+    ctx.moveTo(cx+s9Cos*(rTop-10),cy+s9Sin*(rTop-10));
+    ctx.lineTo(cx+s9Cos*(rTop+5),cy+s9Sin*(rTop+5));
+    ctx.strokeStyle='#ef4444';
+    ctx.lineWidth=2.2;
+    ctx.stroke();
+
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+
+    // S Label
+    ctx.font='italic bold 13px Consolas, ui-monospace, sans-serif';
+    ctx.fillStyle='#ffffff';
+    ctx.fillText('S',cx+Math.cos(-Math.PI/2+aStart-0.05)*(rTop+1),cy+Math.sin(-Math.PI/2+aStart-0.05)*(rTop+1));
+
+    // S1 to S9 ticks
+    const sTicks=[
+      {a:-27*Math.PI/180,lbl:'1'},
+      {a:-19*Math.PI/180,lbl:'3'},
+      {a:-11*Math.PI/180,lbl:'5'},
+      {a:-3*Math.PI/180,lbl:'7'},
+      {a:3*Math.PI/180,lbl:'9'}
+    ];
+    ctx.font='bold 10px Consolas, ui-monospace, sans-serif';
+    for(const t of sTicks){
+      const cos=Math.cos(-Math.PI/2+t.a), sin=Math.sin(-Math.PI/2+t.a);
+      ctx.beginPath();
+      ctx.moveTo(cx+cos*(rTop-6),cy+sin*(rTop-6));
+      ctx.lineTo(cx+cos*rTop,cy+sin*rTop);
+      ctx.strokeStyle='#ffffff';
+      ctx.lineWidth=1.2;
+      ctx.stroke();
+      ctx.fillStyle='#ffffff';
+      ctx.fillText(t.lbl,cx+cos*(rTop+10),cy+sin*(rTop+10));
+    }
+
+    // +dB ticks
+    const dbTicks=[
+      {a:13*Math.PI/180,lbl:'+20'},
+      {a:21*Math.PI/180,lbl:'+40'},
+      {a:29*Math.PI/180,lbl:'+60'}
+    ];
+    ctx.font='bold 9px Consolas, ui-monospace, sans-serif';
+    for(const t of dbTicks){
+      const cos=Math.cos(-Math.PI/2+t.a), sin=Math.sin(-Math.PI/2+t.a);
+      ctx.beginPath();
+      ctx.moveTo(cx+cos*(rTop-6),cy+sin*(rTop-6));
+      ctx.lineTo(cx+cos*rTop,cy+sin*rTop);
+      ctx.strokeStyle='#3b82f6';
+      ctx.lineWidth=1.4;
+      ctx.stroke();
+      ctx.fillStyle='#60a5fa';
+      ctx.fillText(t.lbl,cx+cos*(rTop+10),cy+sin*(rTop+10));
+    }
+    ctx.font='italic bold 10px Consolas, ui-monospace, sans-serif';
+    ctx.fillStyle='#60a5fa';
+    ctx.fillText('dB',cx+Math.cos(-Math.PI/2+aEnd+0.04)*(rTop+14),cy+Math.sin(-Math.PI/2+aEnd+0.04)*(rTop+14));
+
+    // Bottom Arc (COMP / Multi-meter)
+    const aBotStart=-28*Math.PI/180, aBotEnd=26*Math.PI/180;
+    ctx.beginPath();
+    ctx.arc(cx,cy,rBot,-Math.PI/2+aBotStart,-Math.PI/2+aBotEnd);
+    ctx.strokeStyle='rgba(255,255,255,0.6)';
+    ctx.lineWidth=1.5;
+    ctx.stroke();
+
+    ctx.font='italic bold 9px Consolas, ui-monospace, sans-serif';
+    ctx.fillStyle='#cbd5e1';
+    ctx.fillText(mode==='PO'?'PO':'COMP',cx+Math.cos(-Math.PI/2+aBotStart-0.08)*(rBot-12),cy+Math.sin(-Math.PI/2+aBotStart-0.08)*(rBot-12));
+
+    const compTicks=mode==='PO'?[
+      {a:-25*Math.PI/180,lbl:'0'},
+      {a:-12*Math.PI/180,lbl:'25'},
+      {a:1*Math.PI/180,lbl:'50'},
+      {a:14*Math.PI/180,lbl:'75'},
+      {a:24*Math.PI/180,lbl:'100'}
+    ]:[
+      {a:-25*Math.PI/180,lbl:'0'},
+      {a:-13*Math.PI/180,lbl:'5'},
+      {a:-1*Math.PI/180,lbl:'10'},
+      {a:11*Math.PI/180,lbl:'15'},
+      {a:23*Math.PI/180,lbl:'20'}
+    ];
+    ctx.font='bold 9px Consolas, ui-monospace, sans-serif';
+    for(const t of compTicks){
+      const cos=Math.cos(-Math.PI/2+t.a), sin=Math.sin(-Math.PI/2+t.a);
+      ctx.beginPath();
+      ctx.moveTo(cx+cos*(rBot-5),cy+sin*(rBot-5));
+      ctx.lineTo(cx+cos*rBot,cy+sin*rBot);
+      ctx.strokeStyle='rgba(255,255,255,0.6)';
+      ctx.lineWidth=1;
+      ctx.stroke();
+      ctx.fillStyle='#e2e8f0';
+      ctx.fillText(t.lbl,cx+cos*(rBot-11),cy+sin*(rBot-11));
+    }
+    ctx.font='italic 8px Consolas, ui-monospace, sans-serif';
+    ctx.fillStyle='#cbd5e1';
+    ctx.fillText(mode==='PO'?'W':'dB',cx+Math.cos(-Math.PI/2+aBotEnd+0.06)*(rBot-10),cy+Math.sin(-Math.PI/2+aBotEnd+0.06)*(rBot-10));
+
+    // Smooth Analog Needle
+    const clampedProp=Math.max(0,Math.min(1.05,prop));
+    const needleAngle=aStart+clampedProp*(aEnd-aStart);
+    const nCos=Math.cos(-Math.PI/2+needleAngle), nSin=Math.sin(-Math.PI/2+needleAngle);
+
+    ctx.beginPath();
+    ctx.moveTo(cx+nCos*30,cy+nSin*30);
+    ctx.lineTo(cx+nCos*(rTop+5),cy+nSin*(rTop+5));
+    ctx.strokeStyle='#ef4444';
+    ctx.lineWidth=2;
+    ctx.shadowColor='rgba(239,68,68,0.6)';
+    ctx.shadowBlur=5;
+    ctx.stroke();
+
+    ctx.shadowBlur=0;
+    ctx.restore();
+  }
+
+  let needleAnimId=null;
+  function startNeedleLoop(){
+    if(needleAnimId)return;
+    const tension=0.088, damping=0.77;
+    function frame(){
+      for(const id of ['A','B']){
+        const n=needleState[id];
+        const force=(n.target-n.current)*tension;
+        n.velocity=(n.velocity+force)*damping;
+        n.current+=n.velocity;
+        drawNeedleMeter(id,n.current,n.mode);
+      }
+      needleAnimId=requestAnimationFrame(frame);
+    }
+    needleAnimId=requestAnimationFrame(frame);
+  }
+  startNeedleLoop();
 
   function formatStepLabel(hz){if(hz>=1e6)return (hz/1e6)+' MHz';if(hz>=1e3)return (hz/1e3)+' kHz';return hz+' Hz';}
   function updateVfoStepBadges(){const cur=Number(localStorage.getItem('step')||$('step')?.value||'100');const lbl=formatStepLabel(cur)+' step';['A','B'].forEach(name=>{if($('step'+name)){setText($('step'+name),lbl);const isAct=state?.online&&state?.activeVfo===name;$('step'+name).style.display=isAct?'inline-flex':'none';}});}

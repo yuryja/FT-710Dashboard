@@ -149,7 +149,14 @@ function render(next) {
   $('ptt').classList.toggle('active',owned||state.releasePending);setText($('ptt'),state.releasePending?'Retrying PTT release…':owned?(state.pttPending&&!state.dashboardPtt?'Starting TX…':'PTT off'):tx?'External TX':'PTT on');$('ptt').disabled=!owned&&!state.releasePending&&(!live||!state.canPtt||!state.pttKnown||tx);
   const active=state.vfos[state.activeVfo==='B'?1:0], frequencyText=active.frequencyValid?frequency(active.frequency):'Frequency unavailable';
   setText($('mobileTxStatus'),!state.portOpen?'Connect to radio':state.busy?'Connecting to radio…':off?'Radio powered off':tx?'TRANSMITTING · tap PTT to unkey':`RX · ${frequencyText}`);
-  $('powerOn').disabled=!state.portOpen||state.busy||!state.canPower||state.transmitting||state.releasePending;$('powerOff').disabled=!live||!state.canPower;
+  const radioOn = live && !off;
+  const powerBtn = $('powerToggle');
+  if(powerBtn){
+    powerBtn.classList.toggle('active', radioOn);
+    powerBtn.classList.toggle('off', !radioOn);
+    setText($('powerText'), radioOn ? 'Power ON' : 'Power OFF');
+    powerBtn.disabled = radioOn ? (!live || !state.canPower) : (!state.portOpen || state.busy || !state.canPower || state.transmitting || state.releasePending);
+  }
   const connection=state.connection;
   setText($('connectionSummary'),`${state.portOpen?(off?'Powered off':'Connected'):'Not connected'} · ${connection.endpoint||'Choose an endpoint'}`);
   value('connectionKind',connection.kind);for(const key of ['endpoint','baud','stopBits','flow','poll'])value(key,connection[key]);
@@ -229,7 +236,7 @@ async function connectWeb() {
     if(data.type==='error'){notify(data.error);return;}
     if(data.type==='ack'){const waiting=pending.get(data.seq);if(!waiting)return;lastCommandMs=performance.now()-waiting.sent;clearTimeout(waiting.timer);pending.delete(data.seq);const edit=edits.get(waiting.editKey);if(data.ok){if(edit?.seq===data.seq)edit.revision=data.revision||0;waiting.resolve(data);}else{if(edit?.seq===data.seq)edits.delete(waiting.editKey);waiting.reject(new Error(data.error));}}
   };
-  socket.onclose=()=>{if(socket!==connection)return;clearInterval(heartbeat);tuningQueue?.clear();stopClientAudio();for(const item of pending.values()){clearTimeout(item.timer);item.reject(new Error('Station connection lost'));}pending.clear();edits.clear();client=0;$('ptt').disabled=$('powerOn').disabled=$('powerOff').disabled=true;$('app').inert=true;setText($('connectionStatus'),'Browser disconnected · readings paused');setText($('footerStatus'),'Connection lost · controls paused · browser audio stopped');if(!scopeFrozen){scopeBins=null;scheduleScopes();}if(!closing){notify('Station connection lost. Browser audio stopped; reconnecting…');reconnect();}};
+  socket.onclose=()=>{if(socket!==connection)return;clearInterval(heartbeat);tuningQueue?.clear();stopClientAudio();for(const item of pending.values()){clearTimeout(item.timer);item.reject(new Error('Station connection lost'));}pending.clear();edits.clear();client=0;$('ptt').disabled=true;if($('powerToggle'))$('powerToggle').disabled=true;$('app').inert=true;setText($('connectionStatus'),'Browser disconnected · readings paused');setText($('footerStatus'),'Connection lost · controls paused · browser audio stopped');if(!scopeFrozen){scopeBins=null;scheduleScopes();}if(!closing){notify('Station connection lost. Browser audio stopped; reconnecting…');reconnect();}};
   socket.onerror=()=>{};
 }
 function audioSessionType(capturing=false) {
@@ -379,6 +386,11 @@ function setup(){
   $('connectionKind').addEventListener('change',()=>{const before=$('endpoint').value;if($('connectionKind').value==='1'&&!before.includes(':'))$('endpoint').value='127.0.0.1:4532';if($('connectionKind').value==='0'&&before.includes(':'))$('endpoint').value='COM3';if(before!==$('endpoint').value){dirty.add('endpoint');preferenceSaver.edit('endpoint');}});
   $('saveSharing').addEventListener('click',protect(async()=>{await command('sharing',{enabled:$('shareEnabled').checked?'1':'0',port:$('sharePort').value});dirty.delete('shareEnabled');dirty.delete('sharePort');}));
   $('ptt').addEventListener('click',protect(()=>command('ptt',{enabled:state.dashboardPtt||state.pttPending?'0':'1'})));
+  $('powerToggle')?.addEventListener('click',protect(()=>{
+    const off=(state?.poweredOff||state?.standby)&&!state?.busy;
+    const radioOn=state?.online&&!state?.busy&&!off;
+    return command(radioOn?'powerOff':'powerOn');
+  }));
   $('frequencyForm').addEventListener('submit',protect(event=>{event.preventDefault();return command('frequency',{vfo:$('controlVfo').value,hz:String(parseFrequencyInput($('frequency').value))},'frequency');}));
   $('mode').addEventListener('change',protect(async()=>{dirty.delete('width');edits.set('width',{revision:null,until:Date.now()+12000});try{const ack=await command('mode',{vfo:$('controlVfo').value,mode:$('mode').value,width:'0'},'mode');const edit=edits.get('width');if(edit)edit.revision=ack.revision||0;}catch(error){edits.delete('width');throw error;}}));
   $('filterForm').addEventListener('submit',protect(event=>{event.preventDefault();return command('mode',{vfo:$('controlVfo').value,mode:$('mode').value,width:$('width').value},'width');}));

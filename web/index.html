@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#0b1119"><title>FT-710 · YY3BIG</title>
+  <meta name="theme-color" content="#000000"><title>FT-710 · YY3BIG</title>
   <link rel="stylesheet" href="/app.css"><script src="/control-core.js" defer></script><script src="/audio-playback.js" defer></script><script src="/app.js" defer></script>
 </head>
 <body>
-<header class="topbar"><div><strong>FT-710 <span>/ YY3BIG</span></strong><small id="connectionStatus">Station control (macOS)</small></div><div class="header-actions"><time id="clock"></time><div id="mobilePttBar" class="mobile-ptt-bar" hidden><span id="mobileTxStatus" aria-live="polite">Waiting for station</span><button id="ptt" class="ptt" disabled>PTT on</button></div><button id="powerOn" data-action="powerOn" disabled>Power on</button><button id="powerOff" data-action="powerOff" disabled>Power off</button></div></header>
+<header class="topbar"><div><strong>FT-710 <span>/ YY3BIG</span></strong><small id="connectionStatus">Station control (macOS)</small></div><div class="header-actions"><time id="clock"></time><div id="mobilePttBar" class="mobile-ptt-bar" hidden><span id="mobileTxStatus" aria-live="polite">Waiting for station</span><button id="ptt" class="ptt" disabled>PTT on</button></div><button id="powerToggle" class="power-toggle off" disabled aria-label="Toggle Radio Power"><svg class="icon-power" viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg><span id="powerText">Power</span></button></div></header>
 <div id="notice" role="status" aria-live="polite"></div>
 <section id="login" class="login panel"><div class="eyebrow">STATION ACCESS</div><h1>Your radio, wherever you listen.</h1><p>Enter the access code from <b>Web: 8888</b> in the FT-710 Dashboard application.</p><form id="loginForm"><label>Access code<input id="accessCode" autocomplete="current-password" type="password" spellcheck="false" required></label><button class="primary">Connect to station</button></form><p id="loginError" class="muted"></p><p class="muted">HTTPS enables phone microphone audio. First visit? <a href="/setup">Install and trust the station certificate</a>.</p></section>
 <main id="app" hidden>

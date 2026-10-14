@@ -136,3 +136,23 @@
 .audio-recovery .inline{white-space:normal}
 .station-diagnostics{padding:14px;margin:12px 0}
 .station-diagnostics pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem}
+
+.btn-connection{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:6px 14px;border-radius:8px;border:1px solid var(--line);background:var(--input);color:var(--text);font-size:13px;font-weight:550;cursor:pointer;transition:all .2s ease}
+.btn-connection .icon-plug{width:14px;height:14px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s ease}
+.btn-connection:hover{border-color:var(--mint);color:var(--mint)}
+.btn-connection:hover .icon-plug{stroke:var(--mint)}
+.btn-connection.active{border-color:rgba(52,211,153,.45);color:#34d399;background:rgba(16,185,129,.1)}
+.btn-connection.active .icon-plug{stroke:#34d399}
+
+#connectionDialog.connection-modal{width:min(680px,94vw);max-height:92vh;overflow-y:auto;scrollbar-width:thin;border-radius:14px;background:#0c0e14;border:1px solid rgba(255,255,255,0.12);box-shadow:0 24px 64px rgba(0,0,0,0.9);padding:22px 24px}
+#connectionDialog::-webkit-scrollbar{width:6px}
+#connectionDialog::-webkit-scrollbar-thumb{background:#1e2430;border-radius:4px}
+#connectionDialog::backdrop{background:rgba(0,0,0,0.78);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.connection-modal .section-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.connection-modal .section-heading h2{font-size:20px;font-weight:600;color:var(--text);margin:0}
+.modal-close-btn{background:transparent;border:1px solid var(--line);border-radius:6px;width:32px;height:32px;min-height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px;cursor:pointer;transition:all .2s ease}
+.modal-close-btn:hover{border-color:var(--red);color:var(--red);background:rgba(255,75,85,0.1)}
+.connection-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+.connection-modal-action{display:flex;justify-content:flex-end;margin-top:16px}
+.connection-modal-action button{min-width:130px;min-height:42px}
+@media(max-width:600px){.connection-modal-grid{grid-template-columns:1fr}}

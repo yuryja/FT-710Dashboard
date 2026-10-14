@@ -159,6 +159,10 @@ function render(next) {
   }
   const connection=state.connection;
   setText($('connectionSummary'),`${state.portOpen?(off?'Powered off':'Connected'):'Not connected'} · ${connection.endpoint||'Choose an endpoint'}`);
+  if($('connectionBtnText')){
+    setText($('connectionBtnText'),state.portOpen?(off?'Standby':'Connected'):'Connect');
+    $('openConnection')?.classList.toggle('active',Boolean(state.portOpen&&!off));
+  }
   value('connectionKind',connection.kind);for(const key of ['endpoint','baud','stopBits','flow','poll'])value(key,connection[key]);
   for(const id of ['connectionKind','endpoint','baud','stopBits','flow','poll'])$(id).disabled=state.portOpen||state.busy;
   $('endpoint').disabled=state.portOpen||state.busy||connection.kind===2;$('connectRadio').disabled=state.busy;setText($('connectRadio'),state.portOpen?'Disconnect':state.busy?'Opening…':'Connect');
@@ -370,9 +374,11 @@ function setup(){
   preferenceSaver=new PreferenceSaver(readStationPreferences,fields=>command('preferences',fields),key=>dirty.delete(key),(text,failed)=>{setText($('preferenceStatus'),text);$('retryPreferences').hidden=!failed;});
   $('retryPreferences').addEventListener('click',()=>preferenceSaver.flush());
   const phoneLayout=window.matchMedia('(max-width: 650px)');
-  if(phoneLayout.matches){$('connectionPanel').open=false;$('hostReceiveRoute').open=false;$('hostMicrophoneRoute').open=false;$('rfControlPanel').open=false;}
-  phoneLayout.addEventListener?.('change',event=>{if(!event.matches){$('connectionPanel').open=true;$('hostReceiveRoute').open=true;$('hostMicrophoneRoute').open=true;$('rfControlPanel').open=true;}});
-  $('connectionPanel').addEventListener('toggle',()=>$('connectionPanel').querySelector('.connection-toggle').textContent=$('connectionPanel').open?'Hide':'Setup');
+  if(phoneLayout.matches){$('hostReceiveRoute').open=false;$('hostMicrophoneRoute').open=false;$('rfControlPanel').open=false;}
+  phoneLayout.addEventListener?.('change',event=>{if(!event.matches){$('hostReceiveRoute').open=true;$('hostMicrophoneRoute').open=true;$('rfControlPanel').open=true;}});
+  $('openConnection')?.addEventListener('click',()=>$('connectionDialog').showModal());
+  $('closeConnection')?.addEventListener('click',()=>$('connectionDialog').close());
+  $('connectionDialog')?.addEventListener('click',event=>{if(event.target===$('connectionDialog'))$('connectionDialog').close();});
   updateStickyNavigation();
   if(window.ResizeObserver){stickyOffsetsObserver=new ResizeObserver(updateStickyNavigation);stickyOffsetsObserver.observe(document.querySelector('.topbar'));stickyOffsetsObserver.observe($('notice'));}
   stickyNoticeObserver=new MutationObserver(updateStickyNavigation);stickyNoticeObserver.observe($('notice'),{childList:true,characterData:true,subtree:true});window.addEventListener('resize',updateStickyNavigation);

@@ -35,6 +35,7 @@ private:
     bool unattended_ = false;
     std::uint64_t audioRefreshRevision_ = 0, rfOperationRevision_ = 0;
     std::wstring preferencesError_;
+    std::wstring stationCallsign_ = L"YY3BIG";
     ULONGLONG webSpectrumTick_ = 0;
     radio::Snapshot state_;
     std::map<int, HWND> controls_;

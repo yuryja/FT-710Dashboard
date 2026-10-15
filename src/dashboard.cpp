@@ -1704,10 +1704,13 @@ void Dashboard::savePreferences() {
     writeIni(L"RfScope", L"Cat2Port", textOf(controls_[RfCat2Port]).c_str(), iniPath_.c_str());
     writeIni(L"RfScope", L"Cat2Baud", std::to_wstring(selected(controls_[RfCat2Baud])).c_str(), iniPath_.c_str());
     writeIni(L"RfScope", L"WaterfallLevelDb", textOf(controls_[RfWaterfallLevel]).c_str(), iniPath_.c_str());
+    writeIni(L"Station", L"Callsign", stationCallsign_.c_str(), iniPath_.c_str());
     if (!preferencesError_.empty() && preferencesError_ != previousError) log(preferencesError_);
 }
 void Dashboard::loadPreferences() {
     if (iniPath_.empty()) return;
+    wchar_t callsignBuf[64]{}; GetPrivateProfileStringW(L"Station", L"Callsign", L"YY3BIG", callsignBuf, 64, iniPath_.c_str());
+    stationCallsign_ = callsignBuf;
     unattended_ = GetPrivateProfileIntW(L"Audio",L"Unattended",0,iniPath_.c_str()) != 0;
     auto read = [&](const wchar_t* key, int fallback, int max) { return std::clamp(static_cast<int>(GetPrivateProfileIntW(L"Connection", key, fallback, iniPath_.c_str())), 0, max); };
     SendMessageW(controls_[ConnectionKind], CB_SETCURSEL, read(L"Kind", 0, 2), 0);

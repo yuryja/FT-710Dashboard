@@ -149,7 +149,9 @@ void Dashboard::publishWeb(bool urgent) {
         << ",\"canPower\":" << boolean(s.canPower) << ",\"canPtt\":" << boolean(s.canPtt) << ",\"pttKnown\":" << boolean(s.pttKnown)
         << ",\"transmitting\":" << boolean(s.transmitting) << ",\"dashboardPtt\":" << boolean(s.dashboardPtt)
         << ",\"pttPending\":" << boolean(pttPending_) << ",\"releasePending\":" << boolean(s.releasePending) << ",\"browserOwner\":" << browserPttOwner_ << ",\"micLease\":" << audio::browserAudio().lease()
-        << ",\"status\":" << web::json(s.connectionStatus) << ",\"error\":" << web::json(s.error) << ",\"activeVfo\":" << web::json(s.activeVfo == RIG_VFO_B ? "B" : "A")
+        << ",\"status\":" << web::json(s.connectionStatus) << ",\"error\":" << web::json(s.error)
+        << ",\"callsign\":" << web::json(utf8(stationCallsign_))
+        << ",\"activeVfo\":" << web::json(s.activeVfo == RIG_VFO_B ? "B" : "A")
         << ",\"settingsVfo\":" << web::json(s.settingsVfo == RIG_VFO_A ? "A" : s.settingsVfo == RIG_VFO_B ? "B" : "Current") << ",\"modes\":" << array(s.modes) << ",\"vfos\":[";
     for (int i = 0; i < 2; ++i) {
         const auto& vfo = i ? s.b : s.a; if (i) out << ',';
@@ -267,6 +269,12 @@ void Dashboard::webCommand(const std::shared_ptr<web::Request>& request) {
             browserMicrophone(request->client,get("enabled") == "1");
         } else if (action == "unattended") {
             unattended_ = get("enabled") == "1"; savePreferences();
+        } else if (action == "callsign") {
+            auto cs = get("callsign");
+            if (cs.size() <= 20) {
+                stationCallsign_ = wide(cs.empty() ? "YY3BIG" : cs);
+                savePreferences();
+            }
         } else if (action == "audioRefresh") { releasePtt(); stopAudio(); refreshAudioDevices(); }
         else if (action == "audioMap") {
             unsigned slot = static_cast<unsigned>(number(get("slot"),0,3,true)); auto identity = wide(get("device"));

@@ -286,6 +286,12 @@ void ControllerMac::handleWebRequest(std::shared_ptr<web::Request> request) {
             rfWaterfallLevelDb_ = number(get("level"), -30, 30);
             std::wstring cat2PortW(rfCat2Port_.begin(), rfCat2Port_.end());
             rf_scope::applySpan(cat2PortW, rfSpan_, rfCat2Baud_, rfWaterfallLevelDb_);
+        } else if (action == "callsign") {
+            auto cs = get("callsign");
+            if (cs.size() <= 20) {
+                stationCallsign_ = cs.empty() ? "YY3BIG" : cs;
+                log("Station callsign set to: " + stationCallsign_);
+            }
         } else if (action == "clearLog") {
             std::lock_guard lock(activityMutex_);
             activity_.clear();
@@ -355,6 +361,7 @@ std::string ControllerMac::buildStateJson() {
         << ",\"micLease\":" << audio::browserAudio().lease()
         << ",\"status\":" << web::json(s.connectionStatus)
         << ",\"error\":" << web::json(s.error)
+        << ",\"callsign\":" << web::json(stationCallsign_)
         << ",\"activeVfo\":" << web::json(s.activeVfo == RIG_VFO_B ? "B" : "A")
         << ",\"settingsVfo\":" << web::json(s.settingsVfo == RIG_VFO_A ? "A" : s.settingsVfo == RIG_VFO_B ? "B" : "Current")
         << ",\"modes\":" << array(s.modes)

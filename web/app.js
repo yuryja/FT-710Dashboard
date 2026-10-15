@@ -27,6 +27,7 @@ const gainPresets = [
 const cycleSpecs = [['preamp','Preamp: IPO'],['dnr','DNR: Off'],['nb','NB: Off']];
 const functionSpecs = [['func.ANF','Auto notch'],['func.APF','APF'],['func.MON','Monitor'],['func.COMP','Processor'],['func.VOX','VOX'],['func.LOCK','Dial lock'],['func.TUNER','Tuner']];
 const meterElements = [], gainElements = [], cycleElements = [], functionElements = [], settingRows = new Map();
+let lastServerCallsign = null;
 function element(tag, text, className) { const node = document.createElement(tag); if(text !== undefined) node.textContent=text; if(className) node.className=className; return node; }
 function setText(node, text) { const value=String(text ?? ''); if(node.textContent!==value) node.textContent=value; }
 function value(id, next) { const node=$(id); if(!dirty.has(id) && document.activeElement!==node && !edits.has(id)) node.value=String(next ?? ''); }
@@ -381,6 +382,14 @@ function render(next) {
   const off=(state.poweredOff||state.standby)&&!state.busy,status=off?'Powered off':state.status;
   const error=off&&state.error?.startsWith('Frequency read:')?'':state.error;
   $('login').hidden=true;$('app').hidden=false;$('app').inert=false;$('mobilePttBar').hidden=false;setText($('connectionStatus'),status+(state.demo?' · DEMO':''));setText($('footerStatus'),error||(off?status:`${status} · ${state.pttKnown?(tx?'TX':'RX'):'TX status unknown'} · ${state.settings.length} driver settings`));
+  if(state.callsign && state.callsign !== lastServerCallsign) {
+    lastServerCallsign = state.callsign;
+    try {
+      if(typeof localStorage !== 'undefined' && !localStorage.getItem('ft710_callsign')) {
+        applyCallsign(state.callsign, true);
+      }
+    } catch {}
+  }
   if(off&&$('notice').textContent.startsWith('Frequency read:'))notify('');
   if(error && error!==previous?.error) notify(error);
   const owned=state.dashboardPtt||state.pttPending;
@@ -687,10 +696,59 @@ function installPageLifecycle(){
   window.addEventListener('pagehide',()=>{closing=true;clearInterval(heartbeat);clearTimeout(reconnectTimer);tuningQueue?.clear();stopClientAudio();socket?.close();for(const item of pending.values()){clearTimeout(item.timer);item.reject(new Error('Page closed'));}pending.clear();edits.clear();});
   window.addEventListener('pageshow',event=>{if(event.persisted){closing=false;connectWeb();setText($('browserStatus'),'Page restored. Enable listening and arm the microphone again.');}});
 }
-async function exportCsv(){if(!state)return;const cell=value=>'"'+String(value??'').replace(/"/g,'""')+'"',utc=new Date().toISOString();const rows=[['Name','Group','Hamlib ID','Value','Raw value','Access','Range','Status','VFO','UTC']];state.vfos.forEach((vfo,index)=>{const name=index?'B':'A';for(const [field,label,valid,reading]of [['frequency','frequency (Hz)',vfo.frequencyValid,String(vfo.frequency)],['mode','mode / width',vfo.modeValid,vfo.mode+' / '+vfo.width]])rows.push(['VFO '+name+' '+label,'Radio / VFO','VFO'+name+'.'+field,valid?reading:'',valid?reading:'','Read / write','',valid?'Live':'Unavailable',name,utc]);});for(const item of state.settings)rows.push([item.name,item.group,item.id,item.valid?item.display:'',item.valid?item.value:'',item.writable?'Read / write':'Read only',item.range,item.status,state.settingsVfo,utc]);const blob=new Blob(['\ufeff'+rows.map(row=>row.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=element('a');link.href=url;link.download='FT710-settings.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+function getStationCallsign() {
+  try {
+    return (typeof localStorage !== 'undefined' && localStorage.getItem('ft710_callsign')) || state?.callsign || 'YY3BIG';
+  } catch {
+    return state?.callsign || 'YY3BIG';
+  }
+}
+function applyCallsign(callsign, updateInput = false) {
+  const cs = (callsign || '').trim().toUpperCase();
+  if ($('brandCallsign')) {
+    setText($('brandCallsign'), cs ? ' / ' + cs : '');
+  }
+  document.title = cs ? `FT-710 · ${cs}` : 'FT-710';
+  const node = $('stationCallsign');
+  if (updateInput && node && document.activeElement !== node && !dirty.has('stationCallsign')) {
+    node.value = cs;
+  }
+}
+async function exportCsv(){if(!state)return;const cell=value=>'"'+String(value??'').replace(/"/g,'""')+'"',utc=new Date().toISOString();const rows=[['Name','Group','Hamlib ID','Value','Raw value','Access','Range','Status','VFO','UTC']];state.vfos.forEach((vfo,index)=>{const name=index?'B':'A';for(const [field,label,valid,reading]of [['frequency','frequency (Hz)',vfo.frequencyValid,String(vfo.frequency)],['mode','mode / width',vfo.modeValid,vfo.mode+' / '+vfo.width]])rows.push(['VFO '+name+' '+label,'Radio / VFO','VFO'+name+'.'+field,valid?reading:'',valid?reading:'','Read / write','',valid?'Live':'Unavailable',name,utc]);});for(const item of state.settings)rows.push([item.name,item.group,item.id,item.valid?item.display:'',item.valid?item.value:'',item.writable?'Read / write':'Read only',item.range,item.status,state.settingsVfo,utc]);const blob=new Blob(['\ufeff'+rows.map(row=>row.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=element('a');const cs=getStationCallsign();link.href=url;link.download=cs?`FT710-${cs}-settings.csv`:'FT710-settings.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function setup(){
   preferenceSaver=new PreferenceSaver(readStationPreferences,fields=>command('preferences',fields),key=>dirty.delete(key),(text,failed)=>{setText($('preferenceStatus'),text);$('retryPreferences').hidden=!failed;});
   $('retryPreferences').addEventListener('click',()=>preferenceSaver.flush());
+  const initialCallsign = getStationCallsign();
+  if ($('stationCallsign')) $('stationCallsign').value = initialCallsign;
+  applyCallsign(initialCallsign, false);
+  if ($('stationCallsign')) {
+    const saveCallsignAction = () => {
+      const raw = $('stationCallsign').value.trim().toUpperCase();
+      $('stationCallsign').value = raw;
+      dirty.delete('stationCallsign');
+      try { if (typeof localStorage !== 'undefined') localStorage.setItem('ft710_callsign', raw); } catch {}
+      applyCallsign(raw, true);
+      setText($('callsignStatus'), raw ? `Callsign saved: ${raw}` : 'Callsign cleared');
+      setTimeout(() => { if ($('callsignStatus')) setText($('callsignStatus'), ''); }, 3500);
+      if (socket?.readyState === 1) {
+        command('callsign', { callsign: raw }).catch(() => {});
+      }
+    };
+    $('stationCallsign').addEventListener('input', () => {
+      dirty.add('stationCallsign');
+      const cs = $('stationCallsign').value.trim().toUpperCase();
+      if ($('brandCallsign')) setText($('brandCallsign'), cs ? ' / ' + cs : '');
+    });
+    $('stationCallsign').addEventListener('change', saveCallsignAction);
+    $('callsignForm')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      saveCallsignAction();
+    });
+    $('saveCallsign')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      saveCallsignAction();
+    });
+  }
   const phoneLayout=window.matchMedia('(max-width: 650px)');
   if(phoneLayout.matches){$('hostReceiveRoute').open=false;$('hostMicrophoneRoute').open=false;$('rfControlPanel').open=false;}
   phoneLayout.addEventListener?.('change',event=>{if(!event.matches){$('hostReceiveRoute').open=true;$('hostMicrophoneRoute').open=true;$('rfControlPanel').open=true;}});

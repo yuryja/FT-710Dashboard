@@ -38,6 +38,7 @@ private:
     std::mutex stateMutex_;
 
     // Station connection settings
+    std::string stationCallsign_ = "YY3BIG";
     int connectionKind_ = 0; // 0: USB CAT, 1: rigctld, 2: Dummy
     std::string endpoint_;
     int baud_ = 38400;

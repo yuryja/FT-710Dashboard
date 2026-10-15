@@ -393,7 +393,18 @@ function render(next) {
   if(off&&$('notice').textContent.startsWith('Frequency read:'))notify('');
   if(error && error!==previous?.error) notify(error);
   const owned=state.dashboardPtt||state.pttPending;
-  $('ptt').classList.toggle('active',owned||state.releasePending);setText($('ptt'),state.releasePending?'Retrying PTT release…':owned?(state.pttPending&&!state.dashboardPtt?'Starting TX…':'PTT off'):tx?'External TX':'PTT on');$('ptt').disabled=!owned&&!state.releasePending&&(!live||!state.canPtt||!state.pttKnown||tx);
+  const pttNode = $('ptt');
+  if (pttNode) {
+    pttNode.classList.toggle('active', owned || state.releasePending);
+    const pttFabLabel = $('pttFabText');
+    if (pttFabLabel) {
+      setText(pttFabLabel, state.releasePending ? 'RETRY' : owned ? (state.pttPending && !state.dashboardPtt ? 'TX…' : 'TX') : tx ? 'EXT' : 'PTT');
+      pttNode.title = state.releasePending ? 'Retrying PTT release…' : owned ? 'Transmitting (Click to release PTT)' : tx ? 'External TX in progress' : 'Click to Transmit (PTT)';
+    } else {
+      setText(pttNode, state.releasePending ? 'Retrying PTT release…' : owned ? (state.pttPending && !state.dashboardPtt ? 'Starting TX…' : 'PTT off') : tx ? 'External TX' : 'PTT on');
+    }
+    pttNode.disabled = !owned && !state.releasePending && (!live || !state.canPtt || !state.pttKnown || tx);
+  }
   const active=state.vfos[state.activeVfo==='B'?1:0], frequencyText=active.frequencyValid?frequency(active.frequency):'Frequency unavailable';
   setText($('mobileTxStatus'),!state.portOpen?'Connect to radio':state.busy?'Connecting to radio…':off?'Radio powered off':tx?'TRANSMITTING · tap PTT to unkey':`RX · ${frequencyText}`);
   const radioOn = live && !off;
@@ -714,7 +725,163 @@ function applyCallsign(callsign, updateInput = false) {
     node.value = cs;
   }
 }
-async function exportCsv(){if(!state)return;const cell=value=>'"'+String(value??'').replace(/"/g,'""')+'"',utc=new Date().toISOString();const rows=[['Name','Group','Hamlib ID','Value','Raw value','Access','Range','Status','VFO','UTC']];state.vfos.forEach((vfo,index)=>{const name=index?'B':'A';for(const [field,label,valid,reading]of [['frequency','frequency (Hz)',vfo.frequencyValid,String(vfo.frequency)],['mode','mode / width',vfo.modeValid,vfo.mode+' / '+vfo.width]])rows.push(['VFO '+name+' '+label,'Radio / VFO','VFO'+name+'.'+field,valid?reading:'',valid?reading:'','Read / write','',valid?'Live':'Unavailable',name,utc]);});for(const item of state.settings)rows.push([item.name,item.group,item.id,item.valid?item.display:'',item.valid?item.value:'',item.writable?'Read / write':'Read only',item.range,item.status,state.settingsVfo,utc]);const blob=new Blob(['\ufeff'+rows.map(row=>row.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=element('a');const cs=getStationCallsign();link.href=url;link.download=cs?`FT710-${cs}-settings.csv`:'FT710-settings.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+function initFullscreen() {
+  const btn = $('fullscreenToggle');
+  if (!btn) return;
+  const updateFullscreenUi = () => {
+    const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    document.body.classList.toggle('is-fullscreen', isFull);
+    const enterIcon = btn.querySelector('.icon-fullscreen-enter');
+    const exitIcon = btn.querySelector('.icon-fullscreen-exit');
+    const textNode = $('fullscreenText');
+    if (enterIcon) enterIcon.style.display = isFull ? 'none' : 'block';
+    if (exitIcon) exitIcon.style.display = isFull ? 'block' : 'none';
+    if (textNode) setText(textNode, isFull ? 'Normal' : 'Full screen');
+    btn.setAttribute('title', isFull ? 'Volver a pantalla normal' : 'Pantalla completa');
+    btn.classList.toggle('active', isFull);
+    setTimeout(scheduleScopes, 80);
+  };
+  btn.addEventListener('click', async () => {
+    try {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        } else if (document.documentElement.webkitRequestFullscreen) {
+          await document.documentElement.webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          await document.webkitExitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.warn('Fullscreen toggle failed:', err);
+    }
+  });
+  document.addEventListener('fullscreenchange', updateFullscreenUi);
+  document.addEventListener('webkitfullscreenchange', updateFullscreenUi);
+}
+function makePttFabDraggable() {
+  const ptt = $('ptt');
+  if (!ptt) return;
+
+  try {
+    const saved = localStorage.getItem('ft710_ptt_pos');
+    if (saved) {
+      const pos = JSON.parse(saved);
+      if (typeof pos.x === 'number' && typeof pos.y === 'number') {
+        const maxX = Math.max(10, window.innerWidth - 100);
+        const maxY = Math.max(10, window.innerHeight - 100);
+        const clampedX = Math.min(maxX, Math.max(10, pos.x));
+        const clampedY = Math.min(maxY, Math.max(10, pos.y));
+        ptt.style.left = `${clampedX}px`;
+        ptt.style.top = `${clampedY}px`;
+        ptt.style.right = 'auto';
+        ptt.style.bottom = 'auto';
+      }
+    }
+  } catch (e) {
+    console.warn('Failed restoring PTT position:', e);
+  }
+
+  let isDragging = false;
+  let startX = 0;
+  let startY = 0;
+  let initialLeft = 0;
+  let initialTop = 0;
+  let moved = false;
+
+  ptt.addEventListener('click', (e) => {
+    if (moved) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      moved = false;
+    }
+  }, true);
+
+  ptt.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    isDragging = true;
+    moved = false;
+    startX = e.clientX;
+    startY = e.clientY;
+
+    const rect = ptt.getBoundingClientRect();
+    initialLeft = rect.left;
+    initialTop = rect.top;
+
+    try {
+      ptt.setPointerCapture(e.pointerId);
+    } catch (_) {}
+  });
+
+  ptt.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+
+    if (!moved && Math.hypot(dx, dy) > 6) {
+      moved = true;
+      ptt.classList.add('dragging');
+    }
+
+    if (moved) {
+      const btnW = ptt.offsetWidth || 88;
+      const btnH = ptt.offsetHeight || 88;
+      const margin = 10;
+      const maxLeft = Math.max(margin, window.innerWidth - btnW - margin);
+      const maxTop = Math.max(margin, window.innerHeight - btnH - margin);
+
+      const newLeft = Math.min(maxLeft, Math.max(margin, initialLeft + dx));
+      const newTop = Math.min(maxTop, Math.max(margin, initialTop + dy));
+
+      ptt.style.left = `${newLeft}px`;
+      ptt.style.top = `${newTop}px`;
+      ptt.style.right = 'auto';
+      ptt.style.bottom = 'auto';
+    }
+  });
+
+  const endDrag = (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    ptt.classList.remove('dragging');
+
+    try {
+      if (e.pointerId) ptt.releasePointerCapture(e.pointerId);
+    } catch (_) {}
+
+    if (moved) {
+      const rect = ptt.getBoundingClientRect();
+      try {
+        localStorage.setItem('ft710_ptt_pos', JSON.stringify({
+          x: Math.round(rect.left),
+          y: Math.round(rect.top)
+        }));
+      } catch (_) {}
+    }
+  };
+
+  ptt.addEventListener('pointerup', endDrag);
+  ptt.addEventListener('pointercancel', endDrag);
+
+  window.addEventListener('resize', () => {
+    if (!ptt.style.left || ptt.style.left === 'auto') return;
+    const rect = ptt.getBoundingClientRect();
+    const btnW = ptt.offsetWidth || 88;
+    const btnH = ptt.offsetHeight || 88;
+    const margin = 10;
+    const maxLeft = Math.max(margin, window.innerWidth - btnW - margin);
+    const maxTop = Math.max(margin, window.innerHeight - btnH - margin);
+    const clampedX = Math.min(maxLeft, Math.max(margin, rect.left));
+    const clampedY = Math.min(maxTop, Math.max(margin, rect.top));
+    ptt.style.left = `${clampedX}px`;
+    ptt.style.top = `${clampedY}px`;
+  });
+}
+
 function setup(){
   preferenceSaver=new PreferenceSaver(readStationPreferences,fields=>command('preferences',fields),key=>dirty.delete(key),(text,failed)=>{setText($('preferenceStatus'),text);$('retryPreferences').hidden=!failed;});
   $('retryPreferences').addEventListener('click',()=>preferenceSaver.flush());
@@ -790,6 +957,8 @@ function setup(){
     const radioOn=state?.online&&!state?.busy&&!off;
     return command(radioOn?'powerOff':'powerOn');
   }));
+  initFullscreen();
+  makePttFabDraggable();
   $('frequencyForm').addEventListener('submit',protect(event=>{event.preventDefault();return command('frequency',{vfo:$('controlVfo').value,hz:String(parseFrequencyInput($('frequency').value))},'frequency');}));
   $('mode').addEventListener('change',protect(async()=>{dirty.delete('width');edits.set('width',{revision:null,until:Date.now()+12000});try{const ack=await command('mode',{vfo:$('controlVfo').value,mode:$('mode').value,width:'0'},'mode');const edit=edits.get('width');if(edit)edit.revision=ack.revision||0;}catch(error){edits.delete('width');throw error;}}));
   $('filterForm').addEventListener('submit',protect(event=>{event.preventDefault();return command('mode',{vfo:$('controlVfo').value,mode:$('mode').value,width:$('width').value},'width');}));
